@@ -1,0 +1,151 @@
+﻿<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hyrox Epicure - Parcours Hyrox</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <link rel="stylesheet" href="./assets/css/styles.css" />
+    <link rel="stylesheet" href="./assets/css/admin-bootstrap.css" />
+    <style>
+      .hyrox-official {
+        background: rgba(0,0,0,.04);
+        border: 1px solid rgba(0,0,0,.08);
+        border-radius: 8px;
+        padding: 14px 16px;
+        margin-bottom: 16px;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+      .hyrox-official h3 { font-size: 1rem; margin: 0 0 10px; color: var(--text); }
+      .hyrox-official table { font-size: 12px; margin: 0; }
+      .hyrox-official th, .hyrox-official td { padding: 6px 8px; border-bottom: 1px solid rgba(0,0,0,.06); }
+      .hyrox-official tr:last-child td { border-bottom: none; }
+      .hyrox-official .km { color: var(--gold); font-weight: 600; }
+      .hyrox-official .st { font-weight: 600; }
+      .weights-table th, .weights-table td { font-size: 11px; white-space: nowrap; }
+      .weights-table th:first-child, .weights-table td:first-child { white-space: normal; min-width: 9rem; }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-md navbar-dark border-bottom border-secondary admin-navbar">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="./index.html"><span class="fw-bold">HYROX</span> <span class="text-secondary" style="font-size:0.88rem">· Athlètes</span></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#athleteNav" aria-controls="athleteNav" aria-expanded="false" aria-label="Menu">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="athleteNav">
+          <ul class="navbar-nav ms-md-auto flex-wrap py-2 py-md-0">
+            <li class="nav-item"><a class="nav-link" href="./portail.html">Portail</a></li>
+            <li class="nav-item"><a class="nav-link" href="./planning.html">Planning</a></li>
+            <li class="nav-item"><a class="nav-link active" href="./epreuves.html">Épreuves</a></li>
+            <li class="nav-item"><a class="nav-link" href="./classement.html">Classement</a></li>
+            <li class="nav-item"><a class="nav-link" href="./athlete.html">Mes résultats</a></li>
+            <li class="nav-item"><a class="nav-link text-secondary" href="./admin.html" title="Espace gérant">Espace gérant</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <main class="container-fluid px-2 px-sm-3 py-3 py-md-4">
+      <section class="card">
+        <h2>Format Hyrox</h2>
+        <p class="muted" style="font-size:12px;margin-bottom:12px">Référence règlement / barèmes officiels : <a href="https://hyrox.com" target="_blank" rel="noopener noreferrer" style="color:var(--gold)">hyrox.com</a> · <a href="https://hyroxfrance.com" target="_blank" rel="noopener noreferrer" style="color:var(--gold)">Hyrox France</a>. Les valeurs ci-dessous sont des repères type ; l’événement (édition, pays) prévaut.</p>
+
+        <div class="hyrox-official">
+          <h3>Structure : 8 × 1 km + 8 stations</h3>
+          <p class="mb-0" style="margin:0">
+            Après le départ, on répète <strong>huit fois</strong> le couple : <span class="km">1 km de course (running)</span> puis <span class="st">1 station</span> fonctionnelle, dans l’ordre imposé. Cela fait <strong>8 km</strong> de course et <strong>8 stations</strong>. Dernière action : la <strong>station 8 (wall balls)</strong>, puis la <strong>ligne d’arrivée</strong> (pas de 9ᵉ km après wall balls). Le détail des stations et des charges figure dans les tableaux ci-dessous.
+          </p>
+        </div>
+
+        <div class="hyrox-official">
+          <h3>Stations — distances / volumes cibles</h3>
+          <div class="table-responsive">
+            <table class="w-100">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Station</th>
+                  <th>Volume (officiel type)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>1</td><td>SKI</td><td>1000 m (SkiErg)</td></tr>
+                <tr><td>2</td><td>SLED PUSH</td><td>50 m</td></tr>
+                <tr><td>3</td><td>SLED PULL</td><td>50 m</td></tr>
+                <tr><td>4</td><td>BURPEE BROAD JUMP</td><td>80 m</td></tr>
+                <tr><td>5</td><td>ROW</td><td>1000 m</td></tr>
+                <tr><td>6</td><td>FARMERS CARRY</td><td>200 m</td></tr>
+                <tr><td>7</td><td>SANDBAG LUNGES</td><td>100 m (100M lunges)</td></tr>
+                <tr><td>8</td><td>WALL BALLS</td><td>75 ou 100 reps (cible hauteur / charge selon catégorie)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="hyrox-official">
+          <h3>Charges cibles (référence par catégorie)</h3>
+          <p class="muted mb-2" style="font-size:11px">SkiErg, burpees et rameur : effort sur distance (pas de charge au plateau). Sled, farmers, sandbag, wall balls : barèmes indicatifs type Hyrox (kg / reps) — vérifier le règlement de l’épreuve.</p>
+          <div class="table-responsive" style="overflow-x:auto">
+            <table class="w-100 weights-table">
+              <thead>
+                <tr>
+                  <th>Poste</th>
+                  <th>Femmes Open</th>
+                  <th>Pro Femmes</th>
+                  <th>Hommes Open</th>
+                  <th>Pro Hommes</th>
+                  <th>Duo F</th>
+                  <th>Duo H</th>
+                  <th>Mixte</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>SkiErg 1000 m</td>
+                  <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+                </tr>
+                <tr>
+                  <td>Sled push 50 m</td>
+                  <td>102 kg</td><td>152 kg</td><td>152 kg</td><td>202 kg</td><td>102 kg</td><td>152 kg</td><td>152 kg</td>
+                </tr>
+                <tr>
+                  <td>Sled pull 50 m</td>
+                  <td>78 kg</td><td>103 kg</td><td>103 kg</td><td>153 kg</td><td>78 kg</td><td>103 kg</td><td>103 kg</td>
+                </tr>
+                <tr>
+                  <td>Burpee BJ 80 m</td>
+                  <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+                </tr>
+                <tr>
+                  <td>Row 1000 m</td>
+                  <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+                </tr>
+                <tr>
+                  <td>Farmers 200 m</td>
+                  <td>2×16 kg</td><td>2×24 kg</td><td>2×24 kg</td><td>2×32 kg</td><td>2×16 kg</td><td>2×24 kg</td><td>2×24 kg</td>
+                </tr>
+                <tr>
+                  <td>Sandbag lunges 100 m</td>
+                  <td>10 kg</td><td>20 kg</td><td>20 kg</td><td>30 kg</td><td>10 kg</td><td>20 kg</td><td>20 kg</td>
+                </tr>
+                <tr>
+                  <td>Wall balls</td>
+                  <td>75 reps / 4 kg</td>
+                  <td>100 / 6 kg</td>
+                  <td>100 / 6 kg</td>
+                  <td>100 / 9 kg</td>
+                  <td>75 / 4 kg</td>
+                  <td>100 / 6 kg</td>
+                  <td>100 / 6 kg</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="./assets/js/data.js"></script>
+  </body>
+</html>

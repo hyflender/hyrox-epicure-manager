@@ -1,0 +1,3282 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Hyrox Epicure · Live TV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800;14..32,900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:      #0A0A0A;
+  --bg-deep: #040404;    /* overlays plein écran (GO, départ) */
+  --surface: #141414;
+  --card:    #1C1C1C;
+  --border:  #2A2A2A;
+  --text:    #FFFFFF;
+  --muted:   #888888;
+  --faint:   #333333;
+  --volt:    #C6FF00;
+  --volt-dim:rgba(198,255,0,.10);
+  /* Panneaux & profondeur (dashboard TV) */
+  --panel-mid:  #0D0D0D;
+  --panel-deep: #0B0B0B;
+  --panel-side: #0C0C0C;
+  /* Accents sémantiques (cohérents avec le volt) */
+  --pro-coral:  #F87171;
+  --live-red:   #F87171;
+  --live-bright:#EF4444;
+  --warm-orange:#EA580C;   /* échauff. / feu */
+  --warn-amber: #D9A23B;  /* timecap / toasts "maj" */
+  --text-subtle: #9CA1AA; /* sous-titres live (segment) */
+  --seg-cur-run:   #4F8DE8; /* run en cours (lisible sur noir) */
+  --seg-cur-run-b: #7EB6FF;
+  --seg-cur-ws:   #8F6AEB;  /* atelier en cours */
+  --seg-cur-ws-b: #C4A8FC;
+  --sans: "Inter", system-ui, sans-serif;
+  --mono: "JetBrains Mono", monospace;
+}
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); }
+body { font-family:var(--sans); color:var(--text); -webkit-font-smoothing:antialiased; }
+
+/* ── LOADER ───────────────────────────────────────────────────────── */
+#loader {
+  position:fixed; inset:0; background:var(--bg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:999; gap:20px; transition:opacity .6s;
+}
+#loader.hidden { opacity:0; pointer-events:none; }
+.ld-title { font-size:56px; font-weight:900; color:var(--volt); letter-spacing:-.02em; text-transform:uppercase; }
+.ld-sub   { font-size:14px; color:var(--muted); letter-spacing:.2em; text-transform:uppercase; }
+.ld-bar   { width:180px; height:2px; background:var(--border); border-radius:2px; overflow:hidden; }
+.ld-fill  { height:100%; background:var(--volt); border-radius:2px; animation:ldFill 1.4s ease forwards; }
+@keyframes ldFill { to { width:100%; } }
+
+/* ── ROOT LAYOUT ──────────────────────────────────────────────────── */
+#app {
+  width:100vw; height:100vh;
+  display:grid;
+  grid-template-rows: clamp(48px,6vh,72px) 1fr auto;
+}
+
+/* Vue live : défilement global si besoin (timeline départs non limitée en hauteur) */
+#live-view {
+  display:grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  overflow-x:hidden; overflow-y:auto; min-height:0;
+}
+
+/* ── HEADER ───────────────────────────────────────────────────────── */
+#hdr {
+  background:var(--panel-mid); border-bottom:2px solid var(--border);
+  display:flex; align-items:center; padding:0 clamp(14px,2vw,32px); gap:0;
+}
+.hdr-logo {
+  font-size:clamp(16px,1.6vw,24px); font-weight:900; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--volt); flex-shrink:0;
+}
+.hdr-sep  { width:1px; height:22px; background:var(--border); margin:0 clamp(12px,1.4vw,22px); flex-shrink:0; }
+.hdr-comp {
+  font-size:clamp(11px,1.1vw,16px); font-weight:600; color:var(--muted); flex:1;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  min-width:0;
+}
+.hdr-sync { font-size:clamp(9px,.8vw,11px); font-family:var(--mono); color:var(--faint); margin-right:clamp(10px,1vw,16px); }
+.hdr-clock{ font-family:var(--mono); font-size:clamp(24px,3vw,42px); font-weight:700; color:var(--volt); letter-spacing:.06em; }
+.hdr-fs {
+  width:clamp(28px,3vh,38px); height:clamp(28px,3vh,38px); border-radius:6px; margin-left:8px;
+  border:1px solid var(--border); background:var(--card);
+  display:flex; align-items:center; justify-content:center;
+  font-size:clamp(11px,1.1vw,15px); cursor:pointer; transition:all .15s; flex-shrink:0;
+}
+.hdr-fs:hover { border-color:var(--volt); color:var(--volt); }
+.hdr-live-txt {
+  font-size:clamp(9px,.8vw,11px);
+  font-family:var(--mono);
+  font-weight:800;
+  color:var(--live-bright);
+  letter-spacing:.12em;
+}
+
+
+/* ── NEXT DEPARTURE BANNER ── */
+
+
+/* ── TOAST (mise à jour score live) ── */
+#toast {
+  position:fixed; bottom:clamp(100px,14vh,180px); right:clamp(12px,2vw,28px); z-index:500;
+  display:flex; flex-direction:column; gap:10px; pointer-events:none;
+  max-width:min(420px,90vw);
+}
+.toast-item {
+  position:relative;
+  background:linear-gradient(145deg,#1A1A1A 0%,#141414 100%);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:14px; padding:0; overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04) inset;
+  animation:toastIn .45s cubic-bezier(.17,.67,.3,1.1) forwards;
+  min-width:min(300px,88vw);
+}
+.toast-item::before {
+  content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--zcolor,#C6FF00);
+  border-radius:14px 0 0 14px;
+}
+@keyframes toastIn { from{opacity:0; transform:translateX(28px) scale(.96)} to{opacity:1; transform:translateX(0) scale(1)} }
+@keyframes toastOut{ to{ opacity:0; transform:translateX(24px); } }
+.toast-item.out { animation:toastOut .32s ease forwards; }
+
+.toast-inner { display:flex; align-items:stretch; gap:12px; padding:14px 16px 14px 20px; }
+.toast-zone-ico {
+  width:48px; min-width:48px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+  font-size:clamp(20px,2.2vw,26px);
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+}
+.toast-txt { flex:1; min-width:0; }
+.toast-row1 { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
+.toast-zone {
+  font-family:var(--mono); font-size:clamp(8px,.7vw,10px); font-weight:900; letter-spacing:.16em; text-transform:uppercase; color:var(--zcolor,#C6FF00);
+}
+.toast-badge { font-family:var(--mono); font-size:8px; font-weight:900; letter-spacing:.1em; text-transform:uppercase; padding:2px 8px; border-radius:20px; }
+.toast-badge.nouv { color:#0A0A0A; background:var(--volt); }
+.toast-badge.maj  { color:#0A0A0A; background:var(--warn-amber); }
+.toast-ath  { font-size:clamp(14px,1.3vw,18px); font-weight:900; color:#fff; line-height:1.2; }
+.toast-ev   { font-size:clamp(10px,.85vw,12px); color:var(--muted); font-weight:600; margin-top:2px; }
+.toast-score{ font-family:var(--mono); font-size:clamp(18px,1.6vw,24px); font-weight:900; color:var(--zcolor,#C6FF00); margin-top:6px; line-height:1.1; }
+.toast-hint { font-size:10px; font-weight:600; color:var(--faint); margin-left:6px; font-family:var(--mono); }
+.toast-pbar{ height:3px; background:rgba(255,255,255,.08); }
+.toast-pbar>div{ height:100%; width:100%; background:var(--zcolor,#C6FF00); transform-origin:left; animation:toastBar 3.5s linear forwards; }
+@keyframes toastBar{ from{ transform:scaleX(1) } to{ transform:scaleX(0) } }
+
+/* ══════════════════════════════════════════════════════════════
+   SCORE PILLS dans les chips athlètes (vue live)
+══════════════════════════════════════════════════════════════ */
+.ath-scores-row {
+  display:flex; gap:clamp(3px,.4vw,6px); flex-wrap:nowrap;
+  margin-top:clamp(5px,.7vh,8px); overflow:hidden;
+}
+.ath-score-pill {
+  display:flex; align-items:center; gap:4px;
+  padding:clamp(3px,.4vh,5px) clamp(5px,.6vw,9px);
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07);
+  border-radius:6px; flex:1; min-width:0; overflow:hidden;
+}
+.ath-score-pill.current-zone {
+  border-color:rgba(255,255,255,.28);
+  background:rgba(255,255,255,.07);
+}
+.ath-score-pill.scored {
+  border-color:rgba(255,255,255,.18); background:rgba(255,255,255,.06);
+}
+.asp-icon { font-size:clamp(9px,.9vw,12px); flex-shrink:0; line-height:1; }
+.asp-body { display:flex; flex-direction:column; gap:0; min-width:0; flex:1; }
+.asp-val  {
+  font-family:var(--mono); font-size:clamp(10px,1vw,13px); font-weight:800;
+  line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  color:var(--text);
+}
+.asp-val.empty { color:var(--faint); }
+.asp-lbl { font-size:clamp(6px,.55vw,8px); color:rgba(255,255,255,.3); text-transform:uppercase; letter-spacing:.05em; font-family:var(--mono); white-space:nowrap; }
+
+/* ── MIDDLE ──────────────────────────────────────────────────────── */
+#middle {
+  display:grid;
+  grid-template-columns: 1fr clamp(260px,30vw,440px);
+  overflow:hidden; min-height:0;
+}
+
+/* Colonne live : grille de tuiles athlètes (parcours type Hyrox) */
+#tv-live-wrap {
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  overflow:hidden;
+  flex:1;
+}
+.tv-en-cours-head {
+  flex-shrink:0;
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:12px;
+  padding:clamp(8px,1vh,14px) clamp(12px,1.2vw,20px) clamp(4px,.5vh,8px);
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg, var(--panel-mid), var(--bg));
+}
+.tv-en-cours-title {
+  font-size:clamp(20px,2.2vw,32px);
+  font-weight:800;
+  letter-spacing:.02em;
+  line-height:1.1;
+}
+.tv-en-cours-sub {
+  display:block;
+  font-size:clamp(8px,.65vw,11px);
+  font-weight:600;
+  font-family:var(--mono);
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-top:4px;
+}
+.tv-en-cours-count {
+  font-size:clamp(9px,.8vw,12px);
+  font-weight:800;
+  font-family:var(--mono);
+  color:var(--volt);
+  white-space:nowrap;
+}
+
+#tv-live-grid.tv-grid-mode {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(clamp(260px, 28vw, 380px), 1fr));
+  gap:clamp(8px,1vh,12px);
+  padding:clamp(10px,1.2vh,16px) clamp(12px,1.4vw,22px);
+  align-content:start;
+  overflow-y:auto;
+  flex:1;
+  min-height:0;
+}
+
+/* Tuile athlète TV (16 segments + chrono) */
+.tv-ath-card {
+  background:var(--card);
+  border:1px solid rgba(255,255,255,.1);
+  border-left:3px solid var(--ath-accent, var(--volt));
+  border-radius:10px;
+  padding:clamp(10px,1.1vh,14px) clamp(12px,1.1vw,16px);
+  display:flex;
+  flex-direction:column;
+  gap:clamp(6px,.7vh,10px);
+  box-shadow:0 4px 20px rgba(0,0,0,.35);
+}
+.tv-ath-card--prestart {
+  border-color: rgba(217,162,59,.35);
+  box-shadow: 0 4px 20px rgba(0,0,0,.32), 0 0 0 1px rgba(217,162,59,.12) inset;
+}
+.tv-ath-timer.tv-ath-prestart .tv-ath-elapsed {
+  color: var(--warn-amber, #D9A23B);
+  font-weight: 900;
+}
+.tv-ath-top {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.tv-ath-who { min-width:0; flex:1; }
+.tv-ath-name {
+  font-size:clamp(14px,1.4vw,20px);
+  font-weight:800;
+  line-height:1.15;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.tv-ath-badges {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:6px;
+  margin-top:4px;
+}
+.tv-ath-cat {
+  font-size:clamp(7px,.6vw,9px);
+  font-weight:800;
+  font-family:var(--mono);
+  padding:2px 8px;
+  border-radius:6px;
+  text-transform:uppercase;
+  background:rgba(198,255,0,.1);
+  color:rgba(220,255,140,.95);
+  border:1px solid rgba(198,255,0,.3);
+}
+.tv-ath-heat {
+  font-size:clamp(9px,.8vw,12px);
+  font-weight:800;
+  font-family:var(--mono);
+  color:var(--volt);
+  padding:1px 7px;
+  border-radius:4px;
+  background:rgba(198,255,0,.08);
+  border:1px solid rgba(198,255,0,.25);
+}
+.tv-ath-seg-now {
+  font-size:clamp(10px,1vw,14px);
+  font-weight:800;
+  font-family:var(--mono);
+  text-align:right;
+  color:var(--text);
+  letter-spacing:.06em;
+}
+.tv-seg-row {
+  display:flex;
+  gap:0;
+  width:100%;
+  align-items:stretch;
+}
+/* Course (RUN) / atelier (station) — alternance 0..15 comme sur la grille passages */
+.tv-seg {
+  flex:1;
+  min-width:0;
+  height:clamp(5px,.55vh,8px);
+  border-radius:2px;
+  border:1px solid rgba(255,255,255,.1);
+  transition:background .2s, border-color .2s, box-shadow .2s;
+}
+.tv-seg-run {
+  background:rgba(198,255,0,.1);
+  border-color:rgba(198,255,0,.22);
+}
+.tv-seg-atelier {
+  background:rgba(45,212,191,.1);
+  border-color:rgba(45,212,191,.25);
+}
+.tv-seg-run.done   { background:rgba(198,255,0,.55); border-color:rgba(198,255,0,.5); }
+.tv-seg-atelier.done { background:rgba(45,212,191,.5); border-color:rgba(20,184,166,.55); }
+.tv-seg-run.current   { background:rgba(79,141,232,.75); border-color:var(--seg-cur-run-b); box-shadow:0 0 6px rgba(79,141,232,.4); }
+.tv-seg-atelier.current { background:rgba(143,106,235,.7); border-color:var(--seg-cur-ws-b); box-shadow:0 0 6px rgba(143,106,235,.38); }
+/* Zone Rox (entre deux segments) */
+.tv-seg-rox {
+  flex:0 0 clamp(2px,0.25vw,4px);
+  min-width:2px;
+  align-self:stretch;
+  border-radius:1px;
+  background:rgba(245,158,11,.12);
+  border:1px solid rgba(245,158,11,.3);
+  margin:0 1px;
+  transition:background .2s, border-color .2s;
+}
+.tv-seg-rox.done {
+  background:rgba(245,158,11,.4);
+  border-color:rgba(251,191,36,.55);
+}
+.tv-ath-bot {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.tv-ath-timer {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-family:var(--mono);
+  font-size:clamp(16px,1.6vw,24px);
+  font-weight:800;
+  color:var(--volt);
+}
+.tv-ath-timer ico { font-size:0.9em; opacity:.9; }
+.tv-ath-timer-col {
+  display:flex; flex-direction:column; align-items:flex-start; gap:3px; min-width:0;
+}
+.tv-ath-seg-live {
+  font-family:var(--mono);
+  font-size:clamp(8px,.68vw,11px);
+  font-weight:700;
+  color:var(--text-subtle);
+  line-height:1.2;
+  max-width:100%;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.tv-ath-seg-live.est { opacity:0.85; }
+.tv-ath-meta {
+  text-align:right;
+  font-size:clamp(8px,.65vw,10px);
+  font-weight:600;
+  font-family:var(--mono);
+  color:var(--muted);
+  line-height:1.3;
+}
+
+/* Panneau arrivées (dessus du classement) */
+.arrivals-block {
+  flex-shrink:0;
+  max-height:min(38vh, 320px);
+  display:flex;
+  flex-direction:column;
+  border-bottom:2px solid var(--border);
+  background:var(--panel-deep);
+  overflow:hidden;
+}
+.arrivals-h {
+  padding:clamp(8px,1vh,12px) clamp(12px,1.2vw,18px);
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:clamp(8px,.75vw,11px);
+  font-weight:900;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  font-family:var(--mono);
+  color:var(--volt);
+  border-bottom:1px solid var(--border);
+}
+#arrivals-scroll {
+  flex:1;
+  overflow-y:auto;
+  min-height:0;
+  padding:clamp(4px,.5vh,8px) 0;
+}
+.arrival-row {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:clamp(6px,.7vh,10px) clamp(10px,1.1vw,16px);
+  border-bottom:1px solid rgba(255,255,255,.04);
+  font-size:clamp(11px,1.05vw,15px);
+}
+.arrival-name {
+  font-weight:800;
+  line-height:1.2;
+  flex:1;
+  min-width:0;
+}
+.arrival-time {
+  font-family:var(--mono);
+  font-size:clamp(10px,1vw,14px);
+  font-weight:800;
+  color:var(--volt);
+  flex-shrink:0;
+  letter-spacing:0.03em;
+}
+.arrival-heat {
+  font-family:var(--mono);
+  font-size:clamp(8px,.7vw,11px);
+  color:var(--muted);
+  font-weight:700;
+  flex-shrink:0;
+}
+.arrival-placeholder {
+  padding:16px 18px;
+  font-size:clamp(9px,.85vw,12px);
+  color:var(--faint);
+  font-style:italic;
+  text-align:center;
+}
+
+/* ── ZONES PANEL ─────────────────────────────────────────────────── */
+#tv-live-grid {
+  padding:clamp(10px,1.2vh,18px) clamp(10px,1vw,16px) clamp(10px,1.2vh,18px) clamp(16px,1.8vw,28px);
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: min-content;
+  gap:clamp(6px,.8vh,12px);
+  overflow-y:auto; min-height:0; align-content:start;
+  will-change:transform;
+}
+
+/* Zone inactive : ligne ultra compacte (transition vide = cachée via JS) */
+.zone-row {
+  background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.07); border-radius:6px;
+  display:flex; align-items:center; gap:clamp(7px,.7vw,12px);
+  padding:clamp(6px,.7vh,10px) clamp(10px,1vw,16px); overflow:hidden;
+  opacity:.6;
+}
+.zone-row-icon { font-size:clamp(12px,1.2vw,17px); flex-shrink:0; }
+.zone-row-num  { font-size:clamp(7px,.6vw,9px); font-family:var(--mono); font-weight:700; letter-spacing:.08em; color:var(--faint); flex-shrink:0; }
+.zone-row-name { font-size:clamp(10px,1vw,14px); font-weight:800; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.zbadge { font-size:clamp(7px,.6vw,9px); font-family:var(--mono); font-weight:700; letter-spacing:.05em; padding:1px 6px; border-radius:20px; text-transform:uppercase; flex-shrink:0; }
+.zbadge-scored   { background:var(--volt-dim); color:var(--volt); border:1px solid rgba(198,255,0,.2); }
+.zbadge-unscored { background:rgba(255,255,255,.03); color:var(--faint); border:1px solid rgba(255,255,255,.06); }
+.zone-row-dur { font-size:clamp(7px,.65vw,10px); color:var(--faint); font-family:var(--mono); flex-shrink:0; }
+
+/* Zone active : carte expandée — span 2 colonnes */
+.zone-card {
+  grid-column: 1 / -1;
+  background:var(--card); border:1px solid var(--zc, #555);
+  border-left:4px solid var(--zc, #555);
+  border-radius:10px; flex-shrink:0;
+  box-shadow:0 2px 16px rgba(0,0,0,.5);
+  overflow:hidden;
+}
+
+/* Header zone : icône | nom | badge · timer à droite */
+.zone-card-header {
+  display:flex; align-items:center; gap:clamp(10px,1.2vw,16px);
+  padding:clamp(8px,1vh,13px) clamp(12px,1.2vw,18px);
+  background:var(--surface);
+  position:relative;
+}
+.zone-card-icon {
+  width:clamp(32px,3.5vh,46px); height:clamp(32px,3.5vh,46px); border-radius:8px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:clamp(16px,1.8vh,24px);
+  background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12);
+}
+.zone-card-info { flex:1; min-width:0; }
+.zone-card-num  { font-size:clamp(8px,.7vw,10px); font-family:var(--mono); font-weight:700; letter-spacing:.1em; color:var(--muted); text-transform:uppercase; }
+.zone-card-name { font-size:clamp(14px,1.6vw,21px); font-weight:900; text-transform:uppercase; letter-spacing:.04em; line-height:1.1; }
+.zone-card-meta { display:flex; align-items:center; gap:clamp(6px,.8vw,10px); margin-left:auto; }
+.zone-card-dur  { font-size:clamp(9px,.8vw,11px); color:var(--muted); font-family:var(--mono); }
+
+
+/* Barre de progression — fine, sous le header */
+.zone-prog      { height:2px; background:rgba(255,255,255,.06); }
+.zone-prog-fill { height:100%; background:var(--zc); transition:width 1s linear; }
+
+/* Athletes grid */
+.zone-athletes { display:grid; grid-template-columns:repeat(auto-fill,minmax(clamp(200px,20vw,320px),1fr)); gap:clamp(5px,.6vh,9px); padding:clamp(8px,1vh,12px) clamp(10px,1.1vw,16px) clamp(10px,1.2vh,14px); }
+.ath-chip {
+  display:flex; flex-direction:column; gap:0;
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1);
+  border-radius:8px; padding:clamp(8px,.9vh,12px) clamp(10px,1vw,14px);
+}
+.ath-chip-top { display:flex; align-items:center; gap:clamp(8px,.9vw,12px); }
+.ath-chip-info { flex:1; min-width:0; }
+.ath-chip-name {
+  font-size:clamp(13px,1.5vw,20px); font-weight:800; line-height:1.15;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.ath-chip-name em { font-style:normal; font-weight:500; opacity:.75; font-size:.85em; }
+.ath-chip-sub { display:flex; align-items:center; gap:6px; margin-top:3px; }
+.ath-chip-cat {
+  font-size:clamp(7px,.62vw,9px); font-weight:700; font-family:var(--mono);
+  padding:2px 6px; border-radius:8px; text-transform:uppercase;
+}
+.cc-open { background:var(--volt-dim); color:var(--volt); }
+.cc-pro  { background:rgba(248,113,113,.15); color:var(--pro-coral); }
+.ath-chip-heat { font-size:clamp(9px,.8vw,11px); color:var(--muted); font-family:var(--mono); }
+.ath-chip-score { font-family:var(--mono); font-size:clamp(15px,1.7vw,22px); font-weight:800; text-align:right; }
+/* Détail Strength : 3 charges */
+.ath-strength-subs { text-align:right; max-width:clamp(200px,22vw,280px); }
+.ath-strength-subs.dnf {
+  font-family:var(--mono); font-size:clamp(13px,1.3vw,18px); font-weight:900; color:var(--live-bright);
+}
+.ass-total {
+  font-family:var(--mono); font-size:clamp(9px,.8vw,11px); font-weight:800;
+  margin-bottom:4px; letter-spacing:.04em; opacity:.95;
+}
+.ass-grid {
+  display:flex; flex-wrap:nowrap; gap:clamp(5px,.7vw,10px); justify-content:flex-end;
+}
+.ass-col {
+  display:flex; flex-direction:column; align-items:center; gap:1px;
+  min-width:clamp(32px,3.5vw,48px);
+  padding:4px 6px; border-radius:8px;
+  background:rgba(255,68,68,.08); border:1px solid rgba(255,68,68,.15);
+}
+.ass-rep {
+  font-family:var(--mono); font-size:clamp(6px,.55vw,8px); font-weight:900;
+  color:var(--live-red); letter-spacing:.08em; text-transform:uppercase;
+}
+.ass-val {
+  font-family:var(--mono); font-size:clamp(11px,1.1vw,15px); font-weight:900; line-height:1.1;
+}
+.ass-u { font-size:clamp(6px,.5vw,7px); color:var(--faint); font-family:var(--mono); }
+/* Conteneur droit : score + timer empilés */
+.ath-chip-right { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; }
+/* Timer restant sur chip (pas encore de score) */
+.ath-chip-timer { display:flex; flex-direction:column; align-items:flex-end; flex-shrink:0; }
+.act-val { font-family:var(--mono); font-size:clamp(15px,1.7vw,22px); font-weight:800; line-height:1; }
+.act-lbl { font-size:clamp(7px,.6vw,9px); font-family:var(--mono); color:var(--muted); letter-spacing:.1em; text-transform:uppercase; margin-top:1px; }
+/* Phase Strength sur chip */
+.strength-phase {
+  display:flex; flex-direction:column; align-items:flex-end; gap:2px; flex-shrink:0;
+}
+.sph-rep  {
+  font-family:var(--mono); font-size:clamp(9px,.85vw,12px); font-weight:900;
+  color:var(--live-bright); letter-spacing:.1em; text-transform:uppercase;
+  background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.28);
+  padding:1px 6px; border-radius:4px; white-space:nowrap;
+}
+.sph-name {
+  font-size:clamp(9px,.85vw,12px); font-weight:800; color:#fff;
+  text-align:right; white-space:nowrap; text-transform:uppercase; letter-spacing:.04em;
+}
+.sph-timer { font-family:var(--mono); font-size:clamp(13px,1.4vw,18px); font-weight:900; line-height:1; }
+.sph-dots { display:flex; gap:4px; justify-content:flex-end; margin-top:2px; }
+.sph-dot  { width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,.2); }
+.sph-dot.active { background:var(--live-bright); }
+/* Time Cap badge */
+.timecap-badge {
+  display:flex; flex-direction:column; align-items:flex-end; flex-shrink:0; gap:2px;
+}
+.timecap-label {
+  font-family:var(--mono); font-size:clamp(9px,.85vw,12px); font-weight:900;
+  color:var(--warn-amber); background:rgba(217,162,59,.12); border:1px solid rgba(217,162,59,.3);
+  padding:2px 8px; border-radius:4px; letter-spacing:.12em; text-transform:uppercase;
+}
+.timecap-sub {
+  font-size:clamp(7px,.6vw,9px); font-family:var(--mono); color:var(--muted);
+  letter-spacing:.08em; text-transform:uppercase; text-align:right;
+}
+.timecap-timer {
+  font-family:var(--mono); font-size:clamp(13px,1.4vw,18px); font-weight:900;
+  color:var(--warn-amber); line-height:1;
+}
+
+/* ── LEADERBOARD ─────────────────────────────────────────────────── */
+#lb-panel {
+  border-left:2px solid var(--border); background:var(--panel-side);
+  display:flex; flex-direction:column; overflow:hidden; min-height:0;
+}
+.lb-head {
+  flex-shrink:0; padding:clamp(10px,1.2vh,16px) clamp(12px,1.2vw,22px) clamp(8px,1vh,12px); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:10px;
+  background:linear-gradient(90deg, var(--bg), var(--panel-side));
+}
+.lb-title { font-size:clamp(9px,.85vw,13px); font-weight:900; text-transform:uppercase; letter-spacing:.15em; color:var(--volt); flex:1; font-family:var(--mono); }
+.live-dot { width:7px; height:7px; border-radius:50%; background:var(--live-bright); animation:pDot 1.8s steps(1) infinite; flex-shrink:0; }
+@keyframes pDot { 0%,49%{opacity:1} 50%,100%{opacity:.2} }
+
+.lb-scroll { flex:1; overflow-y:auto; min-height:0; will-change:transform; }
+
+.lb-group { border-bottom:1px solid var(--border); }
+.lb-group-hdr {
+  padding:clamp(7px,.8vh,11px) clamp(10px,1vw,18px) clamp(4px,.4vh,6px);
+  display:flex; align-items:center; gap:8px;
+  background:rgba(0,0,0,.3);
+}
+.lb-group-pill {
+  font-size:clamp(7px,.65vw,10px); font-weight:900; letter-spacing:.1em; text-transform:uppercase;
+  font-family:var(--mono); padding:2px 8px; border-radius:20px;
+  border:1px solid currentColor;
+}
+.lb-group-count { font-size:clamp(8px,.7vw,11px); color:var(--faint); font-family:var(--mono); margin-left:auto; }
+
+.lb-row {
+  display:flex; align-items:center; gap:clamp(6px,.7vw,12px); padding:clamp(7px,.9vh,11px) clamp(10px,1vw,18px);
+  border-bottom:1px solid rgba(255,255,255,.03);
+  transition:background .15s;
+}
+.lb-row:hover { background:rgba(255,255,255,.03); }
+.lb-pos { width:clamp(20px,2vw,28px); font-size:clamp(12px,1.3vw,17px); font-weight:800; font-family:var(--mono); flex-shrink:0; text-align:center; }
+.p1 { color:#FFD700; } .p2 { color:#B0B0B0; } .p3 { color:#CD7F32; } .pn { color:var(--faint); }
+.lb-row-name { flex:1; min-width:0; }
+.lb-row-last  { font-size:clamp(12px,1.3vw,18px); font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.lb-row-first { font-size:clamp(9px,.8vw,12px); color:var(--muted); font-weight:400; margin-top:1px; }
+.lb-row-evs   { font-size:clamp(7px,.65vw,10px); font-family:var(--mono); color:var(--faint); margin-top:2px; display:flex; gap:5px; flex-wrap:wrap; }
+.lb-row-evs span { color:var(--muted); }
+.lb-score { display:flex; flex-direction:column; align-items:flex-end; justify-content:center; flex-shrink:0; gap:2px; min-width:clamp(44px,4.5vw,90px); text-align:right; }
+.lb-chrono { font-family:var(--mono); font-size:clamp(12px,1.2vw,19px); font-weight:800; color:var(--volt); line-height:1.15; white-space:nowrap; }
+.lb-pts-nested { font-family:var(--mono); font-size:clamp(8px,.7vw,11px); color:var(--muted); font-weight:700; }
+.lb-score.none { color:var(--faint); font-size:clamp(9px,.8vw,12px); }
+.lb-score:not(.none) .lb-chrono:only-child { font-size:clamp(13px,1.35vw,20px); }
+
+/* ── TIMELINE (départs — tout visible, pas de scroll interne) ──── */
+#timeline {
+  border-top:1px solid var(--border);
+  background:var(--bg);
+  display:flex;
+  flex-direction:column;
+  flex-shrink:0;
+}
+.tl-head {
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:2px 8px 2px 10px;
+  border-bottom:1px solid var(--border);
+}
+.tl-label {
+  font-size:clamp(6px,.6vw,9px);
+  font-weight:800;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  font-family:var(--mono);
+  color:var(--muted);
+}
+.tl-now-txt { font-family:var(--mono); font-size:clamp(8px,.75vw,11px); color:var(--volt); font-weight:700; }
+.tl-scroll {
+  display:flex;
+  flex-wrap:wrap;
+  align-content:flex-start;
+  align-items:flex-start;
+  gap:4px 6px;
+  padding:3px 6px 6px 8px;
+  overflow-x:auto;
+  overflow-y:visible;
+  max-height:none;
+  scrollbar-gutter:stable;
+}
+/* Repère “maintenant” : pleine largeur */
+.tl-now-break {
+  flex:0 0 100%;
+  width:100%;
+  display:flex; align-items:center; gap:6px;
+  font-family:var(--mono); font-size:clamp(6px,.55vw,8px); font-weight:800; letter-spacing:.12em; color:var(--volt);
+  text-transform:uppercase; padding:1px 0; margin:0;
+}
+.tl-now-break::before, .tl-now-break::after {
+  content:''; flex:1; height:1px; background:linear-gradient(90deg, transparent, var(--border), var(--border), transparent);
+}
+
+/* Departure cards */
+.dep-card {
+  flex-shrink:0; width:clamp(155px,16vw,220px);
+  background:var(--card); border:1px solid rgba(255,255,255,.06);
+  border-top:2px solid var(--dc,#444);
+  border-radius:8px; padding:clamp(6px,.8vh,10px) clamp(8px,.8vw,12px);
+  display:flex; flex-direction:column; gap:6px;
+  position:relative; transition:border-color .3s; box-sizing:border-box;
+}
+.dep-card.soon { border-top-color:var(--dc); border-color:color-mix(in srgb,var(--dc) 35%,transparent); }
+.dep-card.soon .dep-time { animation:pDot .8s ease-in-out infinite; }
+/* Timeline : clignotement sur toute la tuile (pas seulement l’heure), seulement via .soon = ≤10 min avant départ */
+#timeline .dep-card.dep-card--tl.soon {
+  animation: tlTileBlink 1.2s ease-in-out infinite;
+}
+#timeline .dep-card.dep-card--tl.soon .dep-time {
+  animation: none;
+}
+@keyframes tlTileBlink {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(198, 255, 0, 0); }
+  50% { opacity: 0.92; box-shadow: 0 0 12px 0 rgba(198, 255, 0, 0.12); }
+}
+
+@keyframes glowBar { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.dep-zone-name { font-size:clamp(7px,.65vw,9px); font-weight:700; text-transform:uppercase; letter-spacing:.07em; display:flex; align-items:center; gap:3px; color:var(--muted); }
+.dep-time      { font-family:var(--mono); font-size:clamp(16px,1.8vw,24px); font-weight:900; line-height:1.1; color:var(--dc,var(--muted)); }
+.dep-heat      { font-family:var(--mono); font-size:clamp(8px,.7vw,10px); color:var(--faint); font-weight:600; }
+.dep-aths      { display:flex; flex-direction:column; gap:2px; margin-top:3px; }
+.dep-ath       { display:flex; align-items:center; gap:4px; }
+.dep-ath-name  { font-size:clamp(9px,.9vw,13px); font-weight:800; flex:1; line-height:1.2; word-break:break-word; }
+.dep-cat       { font-size:clamp(6px,.55vw,8px); font-weight:700; font-family:var(--mono); padding:1px 4px; border-radius:5px; text-transform:uppercase; flex-shrink:0; }
+.dep-elapsed   { font-family:var(--mono); font-size:clamp(8px,.7vw,10px); font-weight:700; color:var(--dc); padding-top:2px; border-top:1px solid var(--border); margin-top:2px; }
+.dep-soon-lbl  { font-family:var(--mono); font-size:clamp(8px,.7vw,10px); font-weight:700; color:var(--dc); padding-top:2px; border-top:1px solid var(--border); margin-top:2px; }
+.dep-tl-warm    { font-family:var(--mono); font-size:clamp(11px,1.05vw,16px); font-weight:800; line-height:1.15; color:var(--muted); }
+.dep-tl-warm-lbl { font-size:clamp(6px,.58vw,8px); font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--faint); margin-bottom:2px; }
+.dep-tl-depart-lbl { font-size:clamp(6px,.58vw,8px); font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--faint); margin-top:4px; margin-bottom:2px; }
+/* Chronologie : 3 bandes de hauteur fixe, largeur = contenu (nom entier) */
+#timeline .dep-card.dep-card--tl {
+  flex:0 0 auto;
+  width:max-content;
+  min-width:9rem;
+  box-sizing:border-box;
+  gap:0;
+  padding:5px 7px 6px;
+  border-top-width:2px;
+}
+#timeline .tl-tile {
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  width:max-content;
+  min-width:0;
+}
+#timeline .tl-tile-name {
+  font-size:clamp(8px,.88vw,13px);
+  font-weight:800;
+  line-height:1.2;
+  color:var(--text);
+  white-space:nowrap;
+  overflow:visible;
+  /* pas de hauteur suppl. : une seule ligne, la tuile s’élargit */
+}
+#timeline .tl-tile-meta {
+  display:flex; flex-wrap:nowrap; align-items:center; gap:5px 8px; font-family:var(--mono);
+  font-size:clamp(5px,.52vw,8px);
+  white-space:nowrap;
+  flex:0 0 auto;
+  min-width:0;
+  overflow:visible;
+}
+#timeline .tl-tile-cat {
+  color:var(--muted);
+  font-weight:700;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  white-space:nowrap;
+  flex-shrink:0;
+}
+#timeline .tl-tile-heat {
+  font-weight:800;
+  color:var(--volt);
+  letter-spacing:.08em;
+  padding:1px 5px;
+  border-radius:4px;
+  background:rgba(198,255,0,.1);
+  border:1px solid rgba(198,255,0,.25);
+  flex-shrink:0;
+  white-space:nowrap;
+}
+#timeline .tl-tile-dep {
+  display:flex; flex-wrap:nowrap; align-items:baseline; justify-content:space-between; gap:6px 12px;
+  margin-top:1px; flex:0 0 auto; white-space:nowrap; min-width:0;
+  width:100%;
+  overflow:visible;
+}
+#timeline .tl-tile-dep .dep-time {
+  font-size:clamp(10px,1.15vw,16px) !important;
+  font-weight:800;
+  line-height:1.1; flex:0 0 auto;
+  white-space:nowrap;
+}
+#timeline .tl-tile-delta {
+  font-family:var(--mono);
+  font-size:clamp(6px,.65vw,10px);
+  font-weight:600;
+  color:var(--muted);
+  line-height:1.2; flex:0 0 auto; text-align:right;
+  white-space:nowrap;
+}
+#timeline .tl-tile-delta strong {
+  color:var(--volt);
+  font-weight:800;
+  font-size:1.08em;
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+/* ── TIMECAP ALERT POPUP ──────────────────────────────────────────── */
+#tc-overlay {
+  position:fixed;
+  top: clamp(48px,6vh,72px);
+  left:50%;
+  transform:translateX(-50%) translateY(-130%);
+  z-index:9992;
+  opacity:0;
+  pointer-events:none;
+  transition:transform .5s cubic-bezier(.17,.67,.35,1.2), opacity .4s ease;
+  filter:drop-shadow(0 12px 32px rgba(0,0,0,.9));
+}
+#tc-overlay.show {
+  transform:translateX(-50%) translateY(clamp(10px,1.5vh,18px));
+  opacity:1;
+}
+#tc-content {
+  display:flex; align-items:center; gap:clamp(12px,1.4vw,20px);
+  background:linear-gradient(135deg,#141414 60%,#1C1C1C);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:18px;
+  padding:clamp(12px,1.4vh,18px) clamp(16px,2vw,26px);
+  min-width:clamp(300px,38vw,520px);
+  position:relative; overflow:hidden;
+}
+#tc-content::before {
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse 80% 60% at 50% -10%, rgba(var(--tc-rgb,198,255,0),.08), transparent 70%);
+  pointer-events:none;
+}
+#tc-stripe {
+  position:absolute; left:0; top:0; bottom:0; width:4px;
+  background:var(--tc-color,#C6FF00); border-radius:18px 0 0 18px;
+}
+#tc-icon-wrap {
+  flex-shrink:0;
+  width:clamp(36px,4vw,52px); height:clamp(36px,4vw,52px);
+  background:rgba(var(--tc-rgb,198,255,0),.12);
+  border:1px solid rgba(var(--tc-rgb,198,255,0),.25);
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+}
+#tc-icon { font-size:clamp(16px,1.8vw,24px); }
+#tc-info { flex:1; min-width:0; }
+#tc-ctx-lbl {
+  font-family:var(--mono); font-size:clamp(7px,.65vw,10px); font-weight:900;
+  letter-spacing:.2em; text-transform:uppercase;
+  color:var(--tc-color,#C6FF00); margin-bottom:3px;
+}
+#tc-label {
+  font-size:clamp(15px,1.8vw,24px); font-weight:900; color:#FFF; line-height:1.1;
+}
+#tc-sub {
+  font-size:clamp(10px,.9vw,13px); color:var(--muted);
+  font-family:var(--mono); margin-top:4px; line-height:1.3;
+}
+#tc-athletes {
+  display:flex; flex-wrap:wrap; gap:4px; margin-top:6px;
+}
+.tc-ath-tag {
+  font-size:clamp(9px,.85vw,12px); font-weight:800;
+  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12);
+  border-radius:6px; padding:2px 8px; color:#FFF;
+  white-space:nowrap;
+}
+#tc-ring-wrap {
+  position:relative; flex-shrink:0;
+  width:clamp(52px,5.5vw,74px); height:clamp(52px,5.5vw,74px);
+}
+#tc-svg { width:100%; height:100%; }
+#tc-num {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-size:clamp(10px,1.2vw,17px); font-weight:900; color:#FFF;
+  text-align:center; line-height:1;
+}
+
+/* ── NEWS TICKER ─────────────────────────────────────────────────── */
+#news-ticker {
+  background:var(--panel-mid); border-top:1px solid var(--border);
+  height:clamp(28px,4vh,40px); display:flex; align-items:center;
+  overflow:hidden; flex-shrink:0;
+  transition: height .3s ease;
+}
+#news-ticker.hidden { height:0; border-top:none; }
+.ticker-label {
+  flex-shrink:0; padding:0 clamp(10px,1.2vw,18px);
+  font-size:clamp(7px,.65vw,10px); font-weight:900; letter-spacing:.2em; text-transform:uppercase;
+  font-family:var(--mono); color:#0A0A0A;
+  background:var(--volt); height:100%;
+  display:flex; align-items:center; white-space:nowrap;
+}
+.ticker-track { flex:1; overflow:hidden; position:relative; height:100%; }
+.ticker-inner { display:inline-flex; align-items:center; height:100%; white-space:nowrap; will-change:transform; }
+.ticker-msg { font-size:clamp(11px,1.2vw,16px); font-weight:600; color:var(--text); padding:0 clamp(40px,5vw,70px); flex-shrink:0; }
+.ticker-dot { width:4px; height:4px; border-radius:50%; background:var(--volt); flex-shrink:0; opacity:.6; margin:0 5px; }
+
+/* ══════════════════════════════════════════════════════════════
+   POPUP DÉPART — layout horizontal TV
+══════════════════════════════════════════════════════════════ */
+#dep-overlay {
+  position:fixed; inset:0; z-index:9998;
+  background:var(--bg-deep);
+  display:flex; flex-direction:column;
+  opacity:0; pointer-events:none;
+  transition:opacity .5s ease;
+  overflow:visible;
+  --dc: #C6FF00;
+}
+#dep-overlay.show { opacity:1; pointer-events:auto; }
+
+/* Glow de fond dynamique */
+#dep-bg-glow {
+  position:absolute; inset:0; pointer-events:none;
+  transition:background 1.2s ease;
+}
+
+/* Scan-lines subtiles */
+#dep-overlay::before {
+  content:''; position:absolute; inset:0; z-index:0;
+  background:repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,.012) 3px, rgba(255,255,255,.012) 4px);
+  pointer-events:none;
+}
+
+/* Bande couleur verticale gauche */
+#dep-stripe {
+  position:absolute; left:0; top:0; bottom:0; width:8px;
+  background:var(--dc); box-shadow:0 0 40px var(--dc), 0 0 80px var(--dc);
+  z-index:2; transition:background .6s, box-shadow .6s;
+}
+
+/* Bouton fermer */
+#dep-close {
+  position:absolute; top:clamp(14px,2vh,28px); right:clamp(14px,2vw,28px);
+  width:40px; height:40px; border-radius:50%;
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+  cursor:pointer; font-size:16px; color:rgba(255,255,255,.35);
+  z-index:10; display:flex; align-items:center; justify-content:center;
+  transition:all .15s;
+}
+#dep-close:hover { background:rgba(255,255,255,.12); color:#fff; }
+
+/* Layout principal : gauche (infos) | droite (ring) */
+#dep-content {
+  position:relative; z-index:2;
+  display:grid; grid-template-columns:1fr clamp(280px,38vw,520px);
+  align-items:stretch; flex:1; height:100%;
+  padding:0 clamp(32px,4vw,64px) 0 clamp(48px,5vw,80px);
+  overflow:visible;
+}
+
+/* ── Panneau gauche : libellé créneau + athlètes ── */
+#dep-left {
+  display:flex; flex-direction:column; justify-content:center;
+  gap:clamp(16px,2.5vh,32px); padding:clamp(24px,3vh,48px) clamp(24px,3vw,48px) clamp(24px,3vh,48px) 0;
+  border-right:1px solid rgba(255,255,255,.07);
+}
+
+/* Badge Heat */
+#dep-heat-badge {
+  display:inline-flex; align-items:center;
+  font-family:var(--mono); font-size:clamp(10px,1vw,14px); font-weight:800;
+  letter-spacing:.35em; text-transform:uppercase;
+  color:#040404; background:var(--dc);
+  padding:clamp(5px,.6vh,8px) clamp(14px,1.6vw,22px); border-radius:5px;
+  align-self:flex-start;
+}
+
+/* Zone */
+#dep-zone-row {
+  display:flex; align-items:center; gap:clamp(14px,1.8vw,24px);
+}
+#dep-zone-icon-big {
+  width:clamp(56px,7vw,90px); height:clamp(56px,7vw,90px); border-radius:20px;
+  font-size:clamp(26px,3.5vw,46px);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  background:color-mix(in srgb, var(--dc) 12%, transparent);
+  border:2px solid color-mix(in srgb, var(--dc) 30%, transparent);
+}
+#dep-zone-label {
+  font-size:clamp(9px,.8vw,12px); font-family:var(--mono); font-weight:700;
+  letter-spacing:.28em; text-transform:uppercase;
+  color:var(--dc); opacity:.7; margin-bottom:4px;
+}
+#dep-zone-name {
+  font-size:clamp(26px,3.8vw,58px); font-weight:900; text-transform:uppercase;
+  letter-spacing:.04em; color:#fff; line-height:1;
+}
+
+/* Athlètes */
+#dep-aths {
+  display:flex; flex-direction:column; gap:clamp(8px,1.2vh,16px);
+}
+.dep-ath-chip {
+  background:rgba(255,255,255,.04);
+  border:1px solid color-mix(in srgb, var(--dc) 22%, transparent);
+  border-left:4px solid var(--dc);
+  border-radius:12px; padding:clamp(12px,1.6vh,20px) clamp(16px,2vw,28px);
+  display:flex; align-items:center; gap:clamp(12px,1.5vw,20px);
+}
+.dep-ath-chip-num {
+  font-family:var(--mono); font-size:clamp(22px,3vw,40px); font-weight:900;
+  color:var(--dc); opacity:.35; line-height:1; flex-shrink:0;
+  min-width:clamp(30px,3vw,48px); text-align:right;
+}
+.dep-ath-chip-body { flex:1; min-width:0; }
+.dep-ath-chip-name {
+  font-size:clamp(18px,2.4vw,36px); font-weight:900; color:#fff; line-height:1.1;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.dep-ath-chip-fn {
+  font-size:clamp(13px,1.4vw,20px); font-weight:400; color:rgba(255,255,255,.55);
+  margin-top:2px;
+}
+.dep-ath-chip-meta {
+  font-size:clamp(9px,.8vw,12px); font-weight:700; font-family:var(--mono);
+  letter-spacing:.12em; text-transform:uppercase;
+  color:var(--dc); margin-top:4px; opacity:.75;
+}
+
+/* ── Panneau droit : ring décompte ── */
+#dep-right {
+  display:flex; align-items:center; justify-content:center;
+  padding:clamp(20px,2.5vh,40px) clamp(20px,2.5vw,40px);
+  overflow:visible;
+}
+
+/* Anneau SVG */
+#dep-ring-wrap {
+  position:relative;
+  /* padding interne pour que le drop-shadow ne soit pas rogné */
+  width:clamp(200px,30vw,420px); height:clamp(200px,30vw,420px);
+  flex-shrink:0; overflow:visible;
+}
+#dep-ring-svg {
+  width:100%; height:100%;
+  transform:rotate(-90deg);
+  overflow:visible;          /* indispensable pour que le filter SVG déborde */
+}
+#dep-ring-bg {
+  stroke:rgba(255,255,255,.06);
+  fill:none; stroke-width:12;
+}
+#dep-ring-fill {
+  fill:none; stroke-width:12; stroke-linecap:round;
+  stroke:var(--dc);
+  transition:stroke .3s ease, stroke-dashoffset 1s linear;
+  filter:drop-shadow(0 0 12px var(--dc));
+}
+#dep-ring-inner {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:0;
+}
+#dep-label {
+  font-family:var(--mono); font-size:clamp(11px,1vw,16px); font-weight:800;
+  letter-spacing:.04em; text-transform:none;
+  color:var(--text); opacity:.9; margin-bottom:6px; text-align:center; max-width:16ch; line-height:1.2;
+}
+#dep-cd {
+  font-size:clamp(80px,13vw,160px); font-weight:900;
+  font-family:var(--mono); line-height:.9;
+  color:var(--dc); transition:color .2s;
+  text-shadow:0 0 60px color-mix(in srgb,var(--dc) 60%,transparent);
+}
+#dep-cd.c3 { color:#f0a050; }
+#dep-cd.c2 { color:#e84040; }
+#dep-cd.c1 { color:#ff1a1a; }
+#dep-unit {
+  font-family:var(--mono); font-size:clamp(9px,.75vw,12px); font-weight:400;
+  letter-spacing:.4em; text-transform:uppercase; color:rgba(255,255,255,.2);
+  margin-top:8px;
+}
+
+/* GO ! dans le ring (masqué — remplacé par #go-screen) */
+#dep-go { display:none; }
+
+/* ══ Pop-up ARRIVÉE (mur) ══════════════════════════════════════ */
+#finish-arrival {
+  position:fixed; inset:0; z-index:10001;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(10,10,10,.9);
+  backdrop-filter:blur(8px);
+  opacity:0; pointer-events:none;
+  transition:opacity .35s ease;
+}
+#finish-arrival.show { opacity:1; pointer-events:auto; }
+#finish-canvas { position:absolute; inset:0; pointer-events:none; }
+#finish-bg-glow {
+  position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(ellipse 70% 55% at 50% 42%,
+    rgba(255,215,0,.18) 0%, rgba(198,255,0,.08) 35%, transparent 70%);
+  animation:finishGlow 1.4s ease-in-out infinite alternate;
+}
+@keyframes finishGlow {
+  from { opacity:.75; transform:scale(.98); }
+  to   { opacity:1;   transform:scale(1.02); }
+}
+.finish-close {
+  position:absolute; top:clamp(12px,2vh,24px); right:clamp(12px,2vw,28px);
+  z-index:5; width:44px; height:44px; border-radius:10px;
+  border:1px solid rgba(255,255,255,.2); background:rgba(0,0,0,.35);
+  color:var(--muted); font-size:20px; cursor:pointer; transition:background .15s,color .15s;
+}
+.finish-close:hover { background:rgba(255,255,255,.1); color:#fff; }
+.finish-inner {
+  position:relative; z-index:2; text-align:center; max-width:min(92vw,720px);
+  padding:clamp(16px,3vh,40px) clamp(20px,4vw,48px);
+  animation:finishPop .6s cubic-bezier(.17,.67,.3,1.2) both;
+}
+@keyframes finishPop {
+  from { opacity:0; transform:scale(.88) translateY(18px); }
+  to   { opacity:1; transform:scale(1) translateY(0); }
+}
+.finish-kicker {
+  font-family:var(--mono); font-size:clamp(8px,.65vw,11px); font-weight:800;
+  letter-spacing:.35em; text-transform:uppercase; color:rgba(198,255,0,.55); margin-bottom:8px;
+}
+.finish-burst {
+  font-size:clamp(36px,8vw,88px); line-height:1; margin-bottom:6px;
+  filter:drop-shadow(0 0 24px rgba(255,215,0,.5));
+  animation:finishIconBounce .9s ease-out both;
+}
+@keyframes finishIconBounce {
+  0%   { transform:scale(0) rotate(-20deg); opacity:0; }
+  55%  { transform:scale(1.15) rotate(4deg); opacity:1; }
+  80%  { transform:scale(.97) rotate(0); }
+  100% { transform:scale(1) rotate(0); }
+}
+.finish-title {
+  font-family:var(--mono); font-weight:900; font-size:clamp(22px,4.2vw,42px);
+  letter-spacing:.12em; text-transform:uppercase; color:#fff;
+  text-shadow:0 0 40px rgba(198,255,0,.35), 0 2px 0 rgba(0,0,0,.4);
+  margin:0 0 10px 0;
+}
+.finish-name {
+  font-size:clamp(18px,3.2vw,34px); font-weight:900; color:#fff;
+  line-height:1.2; margin-bottom:6px;
+  text-shadow:0 2px 20px rgba(0,0,0,.5);
+}
+.finish-div {
+  font-size:clamp(10px,1.1vw,14px); font-weight:600; color:var(--muted);
+  font-family:var(--mono); letter-spacing:.06em; margin-bottom:clamp(14px,2.5vh,28px);
+}
+.finish-chrono {
+  font-family:var(--mono); font-weight:900;
+  font-size:clamp(36px,8vw,96px); line-height:1;
+  color:var(--volt);
+  text-shadow:0 0 50px rgba(198,255,0,.45), 0 0 2px rgba(0,0,0,.8);
+  letter-spacing:.04em;
+  animation:finishChronoPulse 1.8s ease-in-out infinite;
+}
+@keyframes finishChronoPulse {
+  0%, 100% { filter:brightness(1); }
+  50%      { filter:brightness(1.12); }
+}
+.finish-heat {
+  margin-top:clamp(14px,2.2vh,24px);
+  font-family:var(--mono); font-size:clamp(11px,1.2vw,16px); font-weight:800;
+  color:rgba(255,255,255,.45); letter-spacing:.2em; text-transform:uppercase;
+}
+
+/* ══ ÉCRAN GO PLEIN ÉCRAN ══════════════════════════════════════ */
+#go-screen {
+  position:fixed; inset:0; z-index:10000;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  background:var(--bg-deep);
+  opacity:0; pointer-events:none;
+  transition:opacity .25s ease;
+  --gc: #C6FF00;
+}
+#go-screen.show { opacity:1; pointer-events:auto; }
+
+#go-canvas {
+  position:absolute; inset:0; pointer-events:none;
+}
+
+#go-bg-glow {
+  position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(ellipse 80% 70% at 50% 50%,
+    color-mix(in srgb,var(--gc) 22%,transparent) 0%,
+    transparent 65%);
+  animation:goGlowPulse 1.2s ease-in-out infinite alternate;
+}
+@keyframes goGlowPulse {
+  from { opacity:.7; transform:scale(.95); }
+  to   { opacity:1;  transform:scale(1.05); }
+}
+
+#go-zone-badge {
+  position:relative; z-index:2;
+  display:flex; align-items:center; gap:clamp(10px,1.5vw,20px);
+  margin-bottom:clamp(12px,2vh,28px);
+  animation:goFadeUp .5s .1s ease both;
+}
+#go-zone-icon {
+  font-size:clamp(30px,5vw,64px);
+  filter:drop-shadow(0 0 20px var(--gc));
+}
+#go-zone-name {
+  font-size:clamp(18px,2.5vw,36px); font-weight:900;
+  text-transform:uppercase; letter-spacing:.18em;
+  color:var(--gc); font-family:var(--mono);
+  text-shadow:0 0 30px var(--gc);
+}
+
+#go-word {
+  position:relative; z-index:2;
+  font-family:var(--mono); font-weight:900;
+  font-size:clamp(120px,22vw,320px); line-height:.85;
+  color:var(--gc); letter-spacing:.05em;
+  text-shadow: 0 0 80px var(--gc);
+  animation:goWordBlast .55s cubic-bezier(.17,.67,.3,1.33) both;
+}
+@keyframes goWordBlast {
+  0%  { transform:scale(.04) rotate(-12deg); opacity:0; }
+  45% { transform:scale(1.22) rotate(2deg);  opacity:1; }
+  68% { transform:scale(.96) rotate(0); }
+  100%{ transform:scale(1)   rotate(0); }
+}
+#go-word.blasting-go { animation:goWordBlast .55s cubic-bezier(.17,.67,.3,1.33) both; }
+
+#go-athletes {
+  position:relative; z-index:2;
+  display:flex; gap:clamp(16px,3vw,40px);
+  margin-top:clamp(14px,2.5vh,36px);
+  animation:goFadeUp .5s .3s ease both;
+}
+.go-ath {
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  background:rgba(255,255,255,.05);
+  border:1px solid color-mix(in srgb,var(--gc) 35%,transparent);
+  border-top:3px solid var(--gc);
+  border-radius:12px; padding:clamp(10px,1.6vh,20px) clamp(20px,3vw,40px);
+  min-width:clamp(160px,16vw,240px);
+}
+.go-ath-last  { font-size:clamp(18px,2.4vw,34px); font-weight:900; color:#fff; letter-spacing:.03em; }
+.go-ath-first { font-size:clamp(13px,1.5vw,20px); font-weight:400; color:rgba(255,255,255,.6); }
+.go-ath-cat   { font-size:clamp(9px,.85vw,12px); font-family:var(--mono); font-weight:700;
+                letter-spacing:.12em; text-transform:uppercase; color:var(--gc); opacity:.8; margin-top:4px; }
+
+@keyframes goFadeUp {
+  from { opacity:0; transform:translateY(20px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* Flash blanc au déclenchement */
+@keyframes goFlashIn {
+  0%   { background:color-mix(in srgb,var(--gc) 50%,white); }
+  30%  { background:var(--bg-deep); }
+  100% { background:var(--bg-deep); }
+}
+#go-screen.flash-in { animation:goFlashIn .6s ease-out forwards; }
+
+/* Barre de progression bas */
+#dep-bar-wrap {
+  position:absolute; bottom:0; left:0; right:0; height:6px;
+  background:rgba(255,255,255,.05); z-index:10;
+}
+#dep-bar {
+  height:100%; width:0%;
+  background:linear-gradient(90deg, transparent, var(--dc), #fff);
+  transition:width 1s linear;
+  box-shadow:0 0 16px var(--dc), 0 0 32px var(--dc);
+}
+
+/* Animations */
+@keyframes numPunch {
+  0%  { transform:scale(1.6); opacity:.3; }
+  55% { transform:scale(.92); }
+  100%{ transform:scale(1);   opacity:1; }
+}
+.num-punch { animation:numPunch .4s cubic-bezier(.22,.61,.36,1) forwards; }
+
+@keyframes goBlast {
+  0%  { transform:scale(.04) rotate(-10deg); opacity:0; }
+  40% { transform:scale(1.18) rotate(2deg); opacity:1; }
+  65% { transform:scale(.97) rotate(0); }
+  100%{ transform:scale(1)   rotate(0); }
+}
+#dep-go.blasting { animation:goBlast .55s cubic-bezier(.17,.67,.3,1.33) forwards; }
+
+@keyframes overlayFlash {
+  0%  { background:color-mix(in srgb,var(--dc) 40%,transparent); }
+  35% { background:color-mix(in srgb,var(--dc) 7%,transparent); }
+  100%{ background:transparent; }
+}
+#dep-overlay.go-flash::after {
+  content:''; position:absolute; inset:0;
+  animation:overlayFlash .9s ease-out forwards; pointer-events:none; z-index:3;
+}
+
+@keyframes shockwave {
+  0%  { transform:translate(-50%,-50%) scale(.05); opacity:1; border-width:10px; }
+  100%{ transform:translate(-50%,-50%) scale(8);   opacity:0; border-width:1px; }
+}
+.shockwave {
+  position:fixed; top:50%; left:50%; width:100px; height:100px;
+  border-radius:50%; border:8px solid var(--dc);
+  animation:shockwave 1.1s ease-out forwards; pointer-events:none; z-index:5;
+}
+.shockwave2 { animation-delay:.22s; border-color:#fff; opacity:.5; }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="ld-title">HYROX · Epicure</div>
+  <div class="ld-sub">Live Dashboard</div>
+  <div class="ld-bar"><div class="ld-fill"></div></div>
+</div>
+
+<div id="app" style="display:none">
+
+  <!-- HEADER -->
+  <div id="hdr">
+    <div class="hdr-logo">HYROX</div>
+    <div class="hdr-sep"></div>
+    <div class="hdr-comp" id="hdrComp">Epicure</div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:clamp(8px,1vw,16px);flex-shrink:0">
+      <div class="hdr-sync" id="hdrSync"></div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <div class="live-dot" style="width:8px;height:8px"></div>
+        <span class="hdr-live-txt">LIVE</span>
+      </div>
+      <div class="hdr-clock" id="hdrClock">--:--:--</div>
+      <div class="hdr-fs" id="fsBtn" title="Plein écran">⛶</div>
+      <div class="hdr-fs" id="testBtn" title="Tester le décompte" style="font-size:13px">▶</div>
+    </div>
+  </div>
+
+
+  <!-- Next departure banner -->
+  <!-- VUE LIVE UNIQUE -->
+  <div id="live-view">
+    <div id="middle">
+      <div id="tv-live-wrap">
+        <div class="tv-en-cours-head">
+          <div>
+            <div class="tv-en-cours-title">En course</div>
+            <span class="tv-en-cours-sub">Parcours en cours, ou départ dans ≤ 5 min</span>
+          </div>
+          <div class="tv-en-cours-count" id="tv-en-cours-count">0 athlètes</div>
+        </div>
+        <div id="tv-live-grid" class="tv-grid-mode"></div>
+      </div>
+      <div id="lb-panel">
+        <div class="arrivals-block">
+          <div class="arrivals-h">Arrivés</div>
+          <div id="arrivals-scroll"></div>
+        </div>
+        <div class="lb-head">
+          <div class="lb-title">Classement Live</div>
+          <div class="live-dot"></div>
+        </div>
+        <div class="lb-scroll" id="lbScroll"></div>
+      </div>
+    </div>
+    <div id="timeline">
+      <div class="tl-head">
+        <div class="tl-label">Départs</div>
+        <div class="tl-now-txt" id="tlNow"></div>
+      </div>
+      <div class="tl-scroll" id="tlScroll"></div>
+    </div>
+  </div>
+
+  <!-- News ticker (bas de page) -->
+  <div id="news-ticker" class="hidden">
+    <div class="ticker-label">📢 INFO</div>
+    <div class="ticker-track"><div class="ticker-inner" id="tickerInner"></div></div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast"></div>
+
+  <!-- Audio décompte 10 s (hébergé) -->
+  <audio id="dep-countdown-audio" preload="auto" playsinline>
+    <source src="https://hyflender.github.io/tv-screen/10%20Seconds%20Timer.mp3" type="audio/mpeg" />
+  </audio>
+
+  <!-- TIMECAP ALERT POPUP -->
+  <div id="tc-overlay">
+    <div id="tc-content">
+      <div id="tc-stripe"></div>
+      <div id="tc-icon-wrap"><div id="tc-icon">⏱</div></div>
+      <div id="tc-info">
+        <div id="tc-ctx-lbl"></div>
+        <div id="tc-label"></div>
+        <div id="tc-sub"></div>
+        <div id="tc-athletes"></div>
+      </div>
+      <div id="tc-ring-wrap">
+        <svg id="tc-svg" viewBox="0 0 80 80">
+          <circle cx="40" cy="40" r="33" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="6"/>
+          <circle id="tc-arc" cx="40" cy="40" r="33" fill="none" stroke-width="6"
+            stroke-linecap="round" stroke-dasharray="207.3" stroke-dashoffset="0"
+            transform="rotate(-90 40 40)" style="stroke:var(--volt); transition:stroke-dashoffset .9s linear"/>
+        </svg>
+        <div id="tc-num">20</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POPUP DÉPART -->
+  <div id="dep-overlay">
+    <div id="dep-bg-glow"></div>
+    <div id="dep-stripe"></div>
+    <button id="dep-close" onclick="hideDep()">✕</button>
+
+    <div id="dep-content">
+
+      <!-- GAUCHE : libellé créneau + athlètes -->
+      <div id="dep-left">
+        <div id="dep-heat-badge">HEAT —</div>
+        <div id="dep-zone-row">
+          <div id="dep-zone-icon-big">—</div>
+          <div>
+            <div id="dep-zone-label">—</div>
+            <div id="dep-zone-name">—</div>
+          </div>
+        </div>
+        <div id="dep-aths"></div>
+      </div>
+
+      <!-- DROITE : anneau SVG décompte -->
+      <div id="dep-right">
+        <div id="dep-ring-wrap">
+          <svg id="dep-ring-svg" viewBox="0 0 300 300">
+            <circle id="dep-ring-bg"   cx="150" cy="150" r="128"/>
+            <circle id="dep-ring-fill" cx="150" cy="150" r="128"/>
+          </svg>
+          <div id="dep-ring-inner">
+            <div id="dep-label">Départ imminent</div>
+            <div id="dep-cd">60</div>
+            <div id="dep-go">GO !</div>
+            <div id="dep-unit" hidden></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Barre progression -->
+    <div id="dep-bar-wrap"><div id="dep-bar"></div></div>
+  </div>
+
+  <!-- ÉCRAN GO PLEIN ÉCRAN -->
+  <div id="go-screen">
+    <canvas id="go-canvas"></canvas>
+    <div id="go-bg-glow"></div>
+    <div id="go-zone-badge">
+      <div id="go-zone-icon">🔥</div>
+      <div id="go-zone-name">WARM-UP</div>
+    </div>
+    <div id="go-word">GO!</div>
+    <div id="go-athletes"></div>
+  </div>
+
+  <!-- Pop-up arrivée (mur) — chrono, confettis -->
+  <div id="finish-arrival" aria-live="assertive" aria-atomic="true">
+    <canvas id="finish-canvas" aria-hidden="true"></canvas>
+    <div id="finish-bg-glow"></div>
+    <button type="button" id="finish-close" class="finish-close" title="Fermer">✕</button>
+    <div class="finish-inner">
+      <div class="finish-kicker" id="finish-kicker">Hyrox</div>
+      <div class="finish-burst" id="finish-icon">🏁</div>
+      <h2 class="finish-title" id="finish-title">Arrivée !</h2>
+      <div class="finish-name" id="finish-name">—</div>
+      <div class="finish-div" id="finish-div">—</div>
+      <div class="finish-chrono" id="finish-chrono">—</div>
+      <div class="finish-heat" id="finish-heat"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="./assets/js/data.js"></script>
+<script>
+/* ── ZONE META (créneaux planning — non scorés, parcours Hyrox suivi ailleurs) ─ */
+const ZM = {
+  ev_warmup:   { color:'#EA580C', icon:'🔥', label:'Warm-Up'  },
+  /** Départ parcours Hyrox quand aucune épreuve club n’est définie dans `events`. */
+  __depart_parcours__: { color:'#C6FF00', icon:'🏃', label:'Départ parcours' },
+};
+
+/* ── HELPERS ───────────────────────────────────────────────────── */
+function pad(n){ return String(Math.floor(Math.abs(n))).padStart(2,'0'); }
+function parseHm(hm){ const [h,m]=String(hm||'08:00').split(':').map(Number); return (h||0)*60+(m||0); }
+function mToHm(m){ return `${pad(m/60)}:${pad(m%60)}`; }
+function nowMin(){ return HyroxStore.effectiveNowMin(typeof state!=='undefined'?state:null); }
+function catCls(c){ return c==='Pro'?'cc-pro':'cc-open'; }
+function catColor(c){ return c==='Pro'?'#F87171':'#C6FF00'; }
+
+function fmtScore(sc, ev){
+  if(!sc||sc.dnf) return null;
+  const raw=sc.rawValue??sc.performance;
+  if(raw==null||raw==='') return null;
+  if(ev.scoreUnit==='s'){
+    const v=HyroxStore.parseScoreValue(String(raw));
+    if(v==null) return String(raw);
+    return `${pad(v/60)}:${pad(v%60)}`;
+  }
+  return String(raw)+(ev.scoreUnit?' '+ev.scoreUnit:'');
+}
+
+/* ── SCHEDULE HELPERS ──────────────────────────────────────────── */
+function fullSchedule(state){
+  const schedule=HyroxStore.buildHeatSchedule(state);
+  const events=[...(state.events||[])].sort((a,b)=>a.order-b.order);
+  const entries=[];
+  if (events.length === 0) {
+    schedule.forEach(({ heat, startTime, athletes }) => {
+      const zs = parseHm(startTime);
+      entries.push({
+        heat,
+        athletes: athletes || [],
+        eventId: '__depart_parcours__',
+        ev: { id: '__depart_parcours__', name: 'Départ parcours', durationMinutes: 0, order: 0 },
+        zs,
+        ze: zs,
+      });
+    });
+    return entries.sort((a, b) => a.zs - b.zs || a.heat - b.heat);
+  }
+  schedule.forEach(({heat,startTime,athletes})=>{
+    let cursor=parseHm(startTime);
+    events.forEach(ev=>{
+      const zs=cursor, ze=cursor+ev.durationMinutes; cursor=ze;
+      entries.push({heat,athletes,eventId:ev.id,ev,zs,ze});
+    });
+  });
+  return entries.sort((a,b)=>a.zs-b.zs||a.heat-b.heat);
+}
+
+/**
+ * Ligne de temps : un départ par athlète (départ de course = heat).
+ * `sortZs` = heure de départ en minutes depuis minuit.
+ */
+function buildHeatDepartureTimeline(state) {
+  const schedule = HyroxStore.buildHeatSchedule(state);
+  const rows = [];
+  schedule.forEach(({ heat, startTime, athletes }) => {
+    const heatStart = parseHm(startTime);
+    (athletes || []).forEach((athlete) => {
+      rows.push({
+        heat,
+        startTime,
+        athlete,
+        heatStart,
+        sortZs: heatStart,
+      });
+    });
+  });
+  return rows.sort(
+    (a, b) =>
+      a.sortZs - b.sortZs ||
+      a.heat - b.heat ||
+      (a.athlete.sortOrder ?? 9999) - (b.athlete.sortOrder ?? 9999) ||
+      (a.athlete.lastName || "").localeCompare(b.athlete.lastName || "", "fr", { sensitivity: "base" })
+  );
+}
+
+function getEventWindowMap(state, nm){
+  const schedule=HyroxStore.buildHeatSchedule(state);
+  const events=[...state.events].sort((a,b)=>a.order-b.order);
+  const zm={};
+  events.forEach(e=>{ zm[e.id]=[]; });
+  schedule.forEach(({heat,startTime,athletes})=>{
+    let cursor=parseHm(startTime);
+    events.forEach(ev=>{
+      const zs=cursor, ze=cursor+ev.durationMinutes; cursor=ze;
+      if(nm>=zs&&nm<ze){
+        athletes.forEach(a=>{
+          const sc=state.scores.find(s=>s.teamId===a.id&&s.eventId===ev.id)||null;
+          zm[ev.id].push({athlete:a,heat,elapsed:nm-zs,remaining:ze-nm,score:sc});
+        });
+      }
+    });
+  });
+  return zm;
+}
+
+/** Libellés type parcours Hyrox (8×1 km + 8 stations) pour la jauge 16 segments */
+const TV_SEG_LABELS = [
+  "RUN 1", "SKI", "RUN 2", "PUSH", "RUN 3", "PULL", "RUN 4", "BBJ",
+  "RUN 5", "ROW", "RUN 6", "FARM", "RUN 7", "LUNGE", "RUN 8", "WALLS"
+];
+
+/** Pairs = course (run), impairs = atelier (grille 16 types Hyrox). */
+function tvSegIsRunIndex(i) {
+  return i >= 0 && i < 16 && (i & 1) === 0;
+}
+
+/** Jauge : 16 blocs + 15 intercalaires « zone Rox » (couloir entre seg. i et i+1). */
+function buildTvAthleteSegRowHtml(pr) {
+  const parts = [];
+  for (let i = 0; i < 16; i++) {
+    const kind = tvSegIsRunIndex(i) ? "tv-seg-run" : "tv-seg-atelier";
+    let c = "tv-seg " + kind;
+    if (i < pr.filled) c += " done";
+    else if (pr.phase === "race" && i === pr.curIdx) c += " current";
+    parts.push(`<div class="${c}"></div>`);
+    if (i < 15) {
+      let rox = "tv-seg-rox";
+      if (i < pr.filled) rox += " done";
+      parts.push(`<div class="${rox}" aria-hidden="true"></div>`);
+    }
+  }
+  return parts.join("");
+}
+
+function getAthleteHeatStart(athlete, state) {
+  const schedule = HyroxStore.buildHeatSchedule(state);
+  const h = schedule.find((s) => s.athletes.some((a) => a.id === athlete.id));
+  return h ? parseHm(h.startTime) : null;
+}
+
+/** Chrono affiché à l’arrivée : passage mur si saisi, sinon fourchette (fin estimée) si seule l’heure a été prise. */
+function tvArrivalChronoText(state, ath) {
+  const sec = HyroxStore.getHyroxGlobalTimeSec(state, ath.id);
+  if (sec != null) return HyroxStore.formatHyroxRaceDuration(sec);
+  const t0m = getAthleteHeatStart(ath, state);
+  const t1m = HyroxStore.getAthleteEndMinutes(ath, state);
+  if (t0m == null || t1m == null) return "—";
+  const est = (t1m - t0m) * 60;
+  if (est <= 0) return "—";
+  return "~" + HyroxStore.formatHyroxRaceDuration(est);
+}
+
+function fmtChronoFromMin(totalMin) {
+  if (totalMin == null || !isFinite(totalMin) || totalMin < 0) return "0:00";
+  const s = Math.round(totalMin * 60);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}:${pad(m)}:${pad(sec)}`;
+  return `${m}:${pad(sec)}`;
+}
+
+/** Fin de segment (Run / atelier) : heure « End » saisie = segment terminé. */
+function _segDepComplete(seg) {
+  if (!seg) return false;
+  const d = String(seg.dep || "").trim();
+  return d !== "" && HyroxStore.parsePassageClock(d) != null;
+}
+
+function _segsHasAnyDep(segs) {
+  for (let i = 0; i < 16; i++) {
+    if (_segDepComplete(segs[i])) return true;
+  }
+  return false;
+}
+
+/**
+ * Jauge 16 segments : si au moins un passage Rox est saisi, progression réelle
+ * (segments terminés = dep valides dès le début), sinon repli sur l’horloge / durée estimée.
+ */
+function getHyrox16Progress(athlete, state, nm) {
+  const t0 = getAthleteHeatStart(athlete, state);
+  const t1 = HyroxStore.getAthleteEndMinutes(athlete, state);
+  if (t0 == null || t1 == null) {
+    return { p: 0, label: "—", filled: 0, elapsed: 0, curIdx: 0, phase: "unknown" };
+  }
+  if (nm < t0) {
+    return { p: 0, label: "ATTENTE DÉPART", filled: 0, elapsed: 0, curIdx: 0, phase: "waiting" };
+  }
+
+  const segs = HyroxStore.getPassageSegmentsReadOnly(state, athlete.id);
+  const usePassage = _segsHasAnyDep(segs);
+
+  if (usePassage) {
+    let filled = 0;
+    for (let i = 0; i < 16; i++) {
+      if (_segDepComplete(segs[i])) filled++;
+      else break;
+    }
+    const finMur = _segDepComplete(segs[15]);
+    if (finMur || filled >= 16) {
+      const lastS = finMur ? HyroxStore.parsePassageClock(String(segs[15].dep || "").trim()) : null;
+      const elapsedDone = lastS != null ? lastS / 60 - t0 : t1 - t0;
+      return {
+        p: 1,
+        label: "ARRIVÉ",
+        filled: 16,
+        elapsed: Math.max(0, elapsedDone),
+        curIdx: 15,
+        phase: "done",
+        passageMode: true,
+      };
+    }
+    const curIdx = Math.min(15, filled);
+    return {
+      p: filled / 16,
+      label: TV_SEG_LABELS[curIdx] || "…",
+      filled,
+      elapsed: nm - t0,
+      curIdx,
+      phase: "race",
+      passageMode: true,
+    };
+  }
+
+  if (nm >= t1) {
+    return { p: 1, label: "ARRIVÉ", filled: 16, elapsed: t1 - t0, curIdx: 15, phase: "done", passageMode: false };
+  }
+  const p = (nm - t0) / (t1 - t0);
+  const filled = Math.min(16, Math.floor(16 * p));
+  const curIdx = Math.min(15, filled);
+  return {
+    p,
+    label: TV_SEG_LABELS[curIdx] || "…",
+    filled,
+    elapsed: nm - t0,
+    curIdx,
+    phase: "race",
+    passageMode: false,
+  };
+}
+
+/**
+ * Temps écoulé en secondes sur le segment (run / atelier) courant.
+ * Avec passages : depuis Start du segment (heat pour RUN 1) jusqu’à maintenant.
+ * Sans passages (estimé) : prorata 1/16 du parcours.
+ */
+function getCurrentSegmentLiveSec(athlete, state, pr) {
+  if (!athlete || !pr || pr.phase === "unknown" || pr.phase === "waiting" || pr.phase === "done") {
+    return { sec: null, estimated: false };
+  }
+  const t0 = getAthleteHeatStart(athlete, state);
+  const t1 = HyroxStore.getAthleteEndMinutes(athlete, state);
+  if (t0 == null || t1 == null) return { sec: null, estimated: false };
+  const nm = HyroxStore.effectiveNowMin(state);
+  const now = new Date();
+  const nowS = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+  if (pr.passageMode) {
+    const segs = HyroxStore.getPassageSegmentsReadOnly(state, athlete.id);
+    const i = pr.curIdx;
+    if (i < 0 || i > 15) return { sec: null, estimated: false };
+    const arrStr =
+      i === 0
+        ? String(
+            (HyroxStore.getHeatStartClockString(state, athlete.id) || segs[0]?.arr || "").trim() || ""
+          )
+        : String(segs[i]?.arr || "").trim();
+    if (!arrStr) return { sec: null, estimated: false };
+    const arrS = HyroxStore.parsePassageClock(arrStr);
+    if (arrS == null) return { sec: null, estimated: false };
+    let dSec = nowS - arrS;
+    if (dSec < 0) dSec += 86400;
+    return { sec: dSec, estimated: false };
+  }
+  if (t1 <= t0) return { sec: null, estimated: true };
+  const w = (t1 - t0) / 16;
+  const segStart = t0 + pr.curIdx * w;
+  if (nm < segStart) return { sec: 0, estimated: true };
+  return { sec: Math.max(0, (nm - segStart) * 60), estimated: true };
+}
+
+function formatSegmentLiveLine(pr, { sec, estimated }) {
+  if (sec == null || !isFinite(sec) || sec < 0) return "";
+  const txt = HyroxStore.formatDurationMMSS(sec);
+  const lab = (TV_SEG_LABELS[pr.curIdx] || pr.label || "—").trim();
+  const kind = pr.curIdx >= 0 && (pr.curIdx & 1) === 0 ? "Run" : "Atelier";
+  const prefix = estimated ? "~" : "";
+  return `${kind} ${lab} · ${prefix}${txt}`;
+}
+
+function athleteTvRaceFinished(athlete, state, nm) {
+  const t0 = getAthleteHeatStart(athlete, state);
+  const t1 = HyroxStore.getAthleteEndMinutes(athlete, state);
+  if (t0 == null || t1 == null) return { finished: false, sortT1: 0 };
+  const segs = HyroxStore.getPassageSegmentsReadOnly(state, athlete.id);
+  if (_segDepComplete(segs[15])) {
+    const lastS = HyroxStore.parsePassageClock(String(segs[15].dep || "").trim());
+    return { finished: true, sortT1: lastS != null ? lastS / 60 : t1 };
+  }
+  if (!_segsHasAnyDep(segs) && nm >= t1) return { finished: true, sortT1: t1 };
+  return { finished: false, sortT1: 0 };
+}
+
+/* ── Grille live (tuiles athlètes + jauge 16 seg.) ────────────── */
+const TV_EN_COURSE_PRE_START_MIN = 5;
+
+function renderLiveGrid(state) {
+  const nm = nowMin();
+  const schedule = HyroxStore.buildHeatSchedule(state);
+  const enCourse = [];
+  const finished = [];
+  (state.teams || []).forEach((ath) => {
+    const t0 = getAthleteHeatStart(ath, state);
+    if (t0 == null) return;
+    const { finished: isFin, sortT1 } = athleteTvRaceFinished(ath, state, nm);
+    if (isFin) finished.push({ ath, t1: sortT1 });
+    else {
+      const preStart = nm < t0 && t0 - nm <= TV_EN_COURSE_PRE_START_MIN;
+      if (nm >= t0 || preStart) enCourse.push(ath);
+    }
+  });
+  enCourse.sort((a, b) => {
+    const t0a = getAthleteHeatStart(a, state);
+    const t0b = getAthleteHeatStart(b, state);
+    const preA = t0a != null && nm < t0a && t0a - nm <= TV_EN_COURSE_PRE_START_MIN;
+    const preB = t0b != null && nm < t0b && t0b - nm <= TV_EN_COURSE_PRE_START_MIN;
+    if (preA !== preB) return preA ? -1 : 1;
+    if (preA && preB && t0a != null && t0b != null) return t0a - t0b;
+    const ha = schedule.find((s) => s.athletes.some((x) => x.id === a.id))?.heat || 0;
+    const hb = schedule.find((s) => s.athletes.some((x) => x.id === b.id))?.heat || 0;
+    if (ha !== hb) return ha - hb;
+    return (a.lastName || "").localeCompare(b.lastName || "", "fr", { sensitivity: "base" });
+  });
+  finished.sort((a, b) => b.t1 - a.t1);
+
+  const countEl = document.getElementById("tv-en-cours-count");
+  if (countEl) {
+    countEl.textContent = `${enCourse.length} athlète${enCourse.length > 1 ? "s" : ""}`;
+  }
+
+  const panel = document.getElementById("tv-live-grid");
+  if (!panel) return;
+
+  if (!enCourse.length) {
+    panel.innerHTML =
+      '<div class="arrival-placeholder" style="grid-column:1/-1;padding:28px 20px">Aucun athlète en parcours ni en pré-départ (&lt; 5 min) pour l’instant (ou déjà arrivés à droite).</div>';
+  } else {
+  panel.innerHTML = enCourse
+    .map((ath) => {
+      const h = schedule.find((s) => s.athletes.some((x) => x.id === ath.id));
+      const pr = getHyrox16Progress(ath, state, nm);
+      const t0 = getAthleteHeatStart(ath, state);
+      const t1 = HyroxStore.getAthleteEndMinutes(ath, state);
+      const segsRow = buildTvAthleteSegRowHtml(pr);
+      const name = HyroxStore.formatTeamDisplayName(ath);
+      const divLine = HyroxStore.formatTeamDivisionLine(ath);
+      const segLive = getCurrentSegmentLiveSec(ath, state, pr);
+      const segLiveText = formatSegmentLiveLine(pr, segLive);
+      const segLiveHtml = segLiveText
+        ? `<div class="tv-ath-seg-live${segLive.estimated ? " est" : ""}" title="Temps sur ce segment (run ou atelier)${segLive.estimated ? " — estimé sans passages" : ""}">${segLiveText}</div>`
+        : "";
+      const preStart =
+        t0 != null && nm < t0 && t0 - nm <= TV_EN_COURSE_PRE_START_MIN;
+      const chronoLine = preStart
+        ? `Dans ${fmtChronoFromMin(t0 - nm)}`
+        : fmtChronoFromMin(pr.elapsed);
+      const chronoClass = preStart ? " tv-ath-prestart" : "";
+      return `<div class="tv-ath-card${preStart ? " tv-ath-card--prestart" : ""}" style="--ath-accent:var(--volt)" data-t0="${t0}" data-t1="${t1}" data-tid="${ath.id}" data-prestart="${preStart ? "1" : "0"}">
+        <div class="tv-ath-top">
+          <div class="tv-ath-who">
+            <div class="tv-ath-name">${name}</div>
+            <div class="tv-ath-badges">
+              <span class="tv-ath-cat">${divLine}</span>
+              <span class="tv-ath-heat">H${h ? h.heat : "—"}</span>
+            </div>
+          </div>
+          <div class="tv-ath-seg-now tv-curr-lbl">${pr.label}</div>
+        </div>
+        <div class="tv-seg-row" aria-hidden="true">${segsRow}</div>
+        <div class="tv-ath-bot">
+          <div class="tv-ath-timer-col">
+            <div class="tv-ath-timer${chronoClass}"><span>⏱</span> <span class="tv-ath-elapsed">${chronoLine}</span></div>
+            ${segLiveHtml}
+          </div>
+          <div class="tv-ath-meta">
+            <div class="tv-pct">${preStart ? "—" : Math.round(100 * pr.p) + "% complété"}</div>
+            <div class="tv-seg-txt">${preStart ? "Avant le départ" : `${Math.min(16, pr.filled)}/16 segments`}</div>
+          </div>
+        </div>
+      </div>`;
+    })
+    .join("");
+  }
+
+  const arrScroll = document.getElementById("arrivals-scroll");
+  if (arrScroll) {
+    if (!finished.length) {
+      arrScroll.innerHTML = '<div class="arrival-placeholder">En attente des premiers arrivés…</div>';
+    } else {
+      arrScroll.innerHTML = finished
+        .slice(0, 14)
+        .map(({ ath }) => {
+          const hh = schedule.find((s) => s.athletes.some((x) => x.id === ath.id));
+          const ch = tvArrivalChronoText(state, ath);
+          return `<div class="arrival-row">
+            <div class="arrival-name">${HyroxStore.formatTeamDisplayName(ath)}</div>
+            <span class="arrival-time" title="Temps course (départ heat → fin mur si saisie)">${ch}</span>
+            <span class="arrival-heat">H${hh ? hh.heat : "—"}</span>
+          </div>`;
+        })
+        .join("");
+    }
+  }
+}
+
+/* ── RENDER LEADERBOARD ────────────────────────────────────────── */
+function renderLeaderboard(state){
+  const ranking=_cachedRanking||HyroxStore.getRanking(state);
+  const scoredEvs=state.events.filter(e=>e.scored);
+  const ORDER=HyroxStore.sortedRankGroupKeys(state);
+  const groups={};
+  ranking.forEach(r=>{
+    const k=HyroxStore.rankGroupKey(r.team);
+    if(!groups[k]) groups[k]=[];
+    groups[k].push(r);
+  });
+
+  // Qui est dans un créneau planning actif (si des `events` existent)
+  const nm=nowMin();
+  const winMap=getEventWindowMap(state,nm);
+  const enCoursCreneau={}; // teamId -> {color, icon}
+  Object.entries(winMap).forEach(([evId,entries])=>{
+    const meta=ZM[evId];
+    entries.forEach(({athlete})=>{ enCoursCreneau[athlete.id]={color:meta?.color||'#888',icon:meta?.icon||'•',label:meta?.label||''}; });
+  });
+
+  document.getElementById('lbScroll').innerHTML=ORDER.filter(k=>groups[k]?.length).map(k=>{
+    const r0=groups[k][0];
+    const col=catColor(HyroxStore.effectiveCategory(r0?.team));
+    const hdr=HyroxStore.formatTeamDivisionLine(r0?.team);
+    const rowList=[...groups[k]].sort((a,b)=>{
+      const sa=HyroxStore.getHyroxGlobalTimeSec(state, a.team.id);
+      const sb=HyroxStore.getHyroxGlobalTimeSec(state, b.team.id);
+      if (sa != null && sb != null) return sa - sb;
+      if (sa != null) return -1;
+      if (sb != null) return 1;
+      return 0;
+    });
+    const hasAnyChrono=rowList.some((x)=>HyroxStore.getHyroxGlobalTimeSec(state, x.team.id) != null);
+    const hasPointsCompetition=scoredEvs.length>0;
+    const usePodiumStyle=hasAnyChrono || hasPointsCompetition;
+    const rows=rowList.map((r,i)=>{
+      const scored=r.scoredCount>0;
+      const tSec=HyroxStore.getHyroxGlobalTimeSec(state, r.team.id);
+      const pc=usePodiumStyle?(i===0?'p1':i===1?'p2':i===2?'p3':'pn'):'pn';
+      const medal=usePodiumStyle && i<3?['🥇','🥈','🥉'][i]:(i+1);
+      const detail=scoredEvs.map(ev=>{
+        const er=r.eventRanks.find(x=>x.eventId===ev.id);
+        return `<span title="${ev.name}">${ZM[ev.id]?.icon||'•'} ${er?.rank!=null?'#'+er.rank:'—'}</span>`;
+      }).join('');
+      // Indicateur créneau actif (planning)
+      const creneauHint=enCoursCreneau[r.team.id];
+      const creneauBadge=creneauHint
+        ? `<span style="font-size:clamp(8px,.75vw,11px);color:${creneauHint.color};font-family:var(--mono);margin-left:auto;padding:1px 6px;border:1px solid ${creneauHint.color}44;border-radius:4px;white-space:nowrap;flex-shrink:0">${creneauHint.icon}</span>`
+        : '';
+      let scoreHtml='';
+      if (tSec != null) {
+        scoreHtml=`<div class="lb-chrono">${HyroxStore.formatHyroxRaceDuration(tSec)}</div>`;
+        if (scored && hasPointsCompetition) scoreHtml+=`<div class="lb-pts-nested">${r.total} pts</div>`;
+      } else if (scored && hasPointsCompetition) {
+        scoreHtml=`<div class="lb-chrono">${r.total}</div><div class="lb-pts-nested">points</div>`;
+      } else {
+        scoreHtml='—';
+      }
+      const scoreCls=(tSec==null && !(scored && hasPointsCompetition))?'lb-score none':'lb-score';
+      return `
+        <div class="lb-row">
+          <div class="lb-pos ${pc}">${medal}</div>
+          <div class="lb-row-name">
+            <div class="lb-row-last" style="white-space:normal;line-height:1.15">${HyroxStore.formatTeamDisplayName(r.team)}</div>
+            <div class="lb-row-evs">${detail}</div>
+          </div>
+          ${creneauBadge}
+          <div class="${scoreCls}" style="margin-left:${creneauHint?'6px':'auto'}" title="Temps total : départ heat → fin mur (passages)">${scoreHtml}</div>
+        </div>`;
+    }).join('');
+    return `
+      <div class="lb-group">
+        <div class="lb-group-hdr">
+          <span class="lb-group-pill" style="color:${col};border-color:${col}40;background:${col}10;max-width:100%;text-align:left;white-space:normal;line-height:1.2">${hdr}</span>
+          <span class="lb-group-count">${groups[k].length}</span>
+        </div>
+        ${rows}
+      </div>`;
+  }).join('');
+}
+
+/* ── RENDER TIMELINE ───────────────────────────────────────────── */
+function renderTimeline(state) {
+  const nm = nowMin();
+  const allRows = buildHeatDepartureTimeline(state);
+  const entries = allRows.filter((e) => e.heatStart > nm);
+
+  if (!entries.length) {
+    const emptyMsg = !allRows.length
+      ? "Aucun heat : ajoute des athlètes et vérifie l’heure du 1er départ (admin)."
+      : "Tous les heats sont partis — la journée d’épreuve est lancée.";
+    document.getElementById("tlScroll").innerHTML =
+      `<div style="color:var(--faint);font-size:12px;padding:16px">${emptyMsg}</div>`;
+    document.getElementById("tlNow").textContent = `${pad(new Date().getHours())}h${pad(new Date().getMinutes())}`;
+    return;
+  }
+
+  let nowInsertIdx = -1;
+  for (let i = 0; i < entries.length; i++) {
+    if (entries[i].sortZs > nm) {
+      nowInsertIdx = i;
+      break;
+    }
+  }
+
+  const dcDep = "#C6FF00";
+  let html = "";
+  let nowInserted = false;
+
+  entries.forEach((e, idx) => {
+    if (!nowInserted && (nowInsertIdx === idx || (nowInsertIdx === -1 && idx === entries.length - 1))) {
+      html += `<div class="tl-now-break" aria-hidden="true">Now</div>`;
+      nowInserted = true;
+    }
+
+    const minToDep = e.heatStart - nm;
+    const isSoon = minToDep > 0 && minToDep <= 10;
+    const cls = isSoon ? " soon" : "";
+    const borderC = dcDep;
+
+    const a = e.athlete;
+    const name = a
+      ? HyroxStore.formatTeamDisplayName(a)
+      : "—";
+    const catLine = a ? HyroxStore.formatTeamDivisionLine(a) : "—";
+    const heatLabel = "H" + e.heat;
+    const m = minToDep > 0 ? Math.ceil(minToDep) : 0;
+    const deltaLine =
+      m > 0
+        ? ` <span class="tl-tile-delta">dans <strong>${m}</strong> min</span>`
+        : "";
+
+    html += `
+      <div class="dep-card dep-card--tl${cls}" style="--dc:${dcDep};border-top-color:${borderC};">
+        <div class="tl-tile">
+          <div class="tl-tile-name">${name}</div>
+          <div class="tl-tile-meta">
+            <span class="tl-tile-cat ${a ? catCls(a.category) : ""}">${catLine}</span>
+            <span class="tl-tile-heat">${heatLabel}</span>
+          </div>
+          <div class="tl-tile-dep">
+            <span class="dep-time" style="color:${dcDep}">${e.startTime}</span>${deltaLine}
+          </div>
+        </div>
+      </div>`;
+  });
+
+  if (!nowInserted) html = `<div class="tl-now-break" aria-hidden="true">Now</div>` + html;
+
+  const tlScroll = document.getElementById("tlScroll");
+  tlScroll.innerHTML = html;
+
+  document.getElementById("tlNow").textContent = `${pad(new Date().getHours())}h${pad(new Date().getMinutes())}`;
+}
+
+/* ── [renderResults supprimé — vue unique live] ────────────────── */
+function _buildScorePill(sc, er, ev, zm, isBest, compact){ // gardé pour compat éventuelle
+  if(!sc){
+    if(compact) return '<div class="res-extra-pill" style="opacity:.3">'+zm.icon+' \u2014</div>';
+    return '<div class="res-score-pill">'
+      +'<span class="res-pill-icon" style="opacity:.3">'+zm.icon+'</span>'
+      +'<div class="res-pill-body">'
+        +'<span class="res-pill-lbl">'+zm.label+'</span>'
+        +'<span class="res-pill-val" style="color:var(--faint)">\u2014</span>'
+      +'</div></div>';
+  }
+  if(sc.dnf){
+    if(compact) return '<div class="res-extra-pill" style="border-color:#EF444440;color:#EF4444">'+zm.icon+' DNF</div>';
+    return '<div class="res-score-pill'+(isBest?' best':'')+'"><span class="res-pill-icon">'+zm.icon+'</span>'
+      +'<div class="res-pill-body"><span class="res-pill-lbl">'+zm.label+'</span>'
+      +'<span class="res-pill-val" style="color:#EF4444">DNF</span></div></div>';
+  }
+  // Format value
+  var val = sc.rawValue!=null ? sc.rawValue : sc.performance;
+  var subLabel = '';
+  if(ev.timeCap && sc.timeCapped){
+    var reps = sc.reps != null ? sc.reps : (100000 - Number(sc.rawValue));
+    val = '+'+reps; subLabel = 'TIME CAP';
+  } else if(ev.scoreUnit==='s'){
+    var v = HyroxStore.parseScoreValue(String(sc.rawValue!=null?sc.rawValue:sc.performance||''));
+    if(v!=null) val = pad(v/60)+':'+pad(v%60);
+  } else if(val!=null && val!==''){
+    val = String(val)+(ev.scoreUnit?' '+ev.scoreUnit:'');
+  }
+  var col  = isBest ? zm.color : 'var(--text)';
+  var rank = er && er.rank!=null ? '#'+er.rank : '';
+  var lbl  = zm.label+(subLabel?' \u00b7 '+subLabel:'');
+  var lblStyle = isBest ? 'color:'+zm.color : '';
+  if(compact){
+    var pillStyle = isBest ? 'border-color:'+zm.color+'44;color:'+zm.color : '';
+    var rankSpan  = rank ? '<span style="opacity:.5;font-size:10px">'+rank+'</span>' : '';
+    return '<div class="res-extra-pill" style="'+pillStyle+'">'+zm.icon+' '+val+' '+rankSpan+'</div>';
+  }
+  var rankLine = rank ? '<span class="res-pill-rank">'+rank+(isBest?' \u2605':'')+'</span>' : '';
+  return '<div class="res-score-pill'+(isBest?' best':'')+'"><span class="res-pill-icon">'+zm.icon+'</span>'
+    +'<div class="res-pill-body">'
+      +'<span class="res-pill-lbl" style="'+lblStyle+'">'+lbl+'</span>'
+      +'<span class="res-pill-val" style="color:'+col+'">'+val+'</span>'
+      +rankLine
+    +'</div></div>';
+}
+
+function renderResults(state){
+  var ranking   = HyroxStore.getRanking(state);
+  var scoredEvs = state.events.filter(function(e){ return e.scored; }).sort(function(a,b){ return a.order-b.order; });
+  var ORDER = HyroxStore.sortedRankGroupKeys(state);
+  var groups={};
+  ranking.forEach(function(r){
+    var k = HyroxStore.rankGroupKey(r.team);
+    if(!groups[k]) groups[k]=[];
+    groups[k].push(r);
+  });
+
+  var bestRank={};
+  ORDER.forEach(function(k){
+    bestRank[k]={};
+    scoredEvs.forEach(function(ev){
+      var ranks=groups[k].map(function(r){ var er=r.eventRanks.find(function(x){ return x.eventId===ev.id; }); return er?er.rank:null; }).filter(function(x){ return x!=null; });
+      if(ranks.length) bestRank[k][ev.id]=Math.min.apply(null,ranks);
+    });
+  });
+
+  var MEDALS     = ['&#129351;','&#129352;','&#129353;']; // 🥇🥈🥉
+  var MEDAL_COLS = ['#FFD700','#C0C0C0','#CD7F32'];
+  var RANK_CLS   = ['rank-1','rank-2','rank-3'];
+  var CAT_ICONS  = { Open:'&#128293;', Pro:'&#128142;' };
+
+  var sections = ORDER.filter(function(k){ return groups[k] && groups[k].length; }).map(function(k){
+    var r0 = groups[k][0];
+    var cat = r0 && r0.team ? HyroxStore.effectiveCategory(r0.team) : 'Open';
+    var col     = catColor(cat);
+    var icon    = CAT_ICONS[cat]||'';
+    var list    = groups[k];
+    var totalSc = list.filter(function(r){ return r.scoredCount>0; }).length;
+    var divLine = (r0 && r0.team) ? HyroxStore.formatTeamDivisionLine(r0.team) : '\u2014';
+
+    // Header
+    var hdr = '<div class="res-cat-hdr">'
+      +'<div class="res-cat-stripe" style="background:'+col+'"></div>'
+      +'<div class="res-cat-body">'
+        +'<span class="res-cat-icon">'+icon+'</span>'
+        +'<span class="res-cat-name" style="color:'+col+'">'+divLine+'</span>'
+        +'<span class="res-cat-count">'+list.length+'</span>'
+        +'<span class="res-cat-scored">'+totalSc+'/'+scoredEvs.length+' épreuves</span>'
+      +'</div></div>';
+
+    // Podium cards
+    var podiumGroup = list.slice(0,3);
+    var extraGroup  = list.slice(3);
+
+    var cards = podiumGroup.map(function(r,i){
+      var scored     = r.scoredCount>0;
+      var rankCls    = (scored && i<3) ? RANK_CLS[i] : '';
+      var stripeCol  = (scored && i<3) ? MEDAL_COLS[i] : col+'55';
+      var medHtml    = (scored && i<3) ? '<span class="res-card-medal">'+MEDALS[i]+'</span>' : '<span class="res-card-rank-num">'+(i+1)+'</span>';
+      var totalCol   = scored ? (i===0?'#FFD700':i===1?'#C0C0C0':i===2?'#CD7F32':'var(--volt)') : 'var(--faint)';
+
+      var pills = scoredEvs.map(function(ev){
+        var sc   = state.scores.find(function(s){ return s.teamId===r.team.id&&s.eventId===ev.id; });
+        var er   = r.eventRanks.find(function(x){ return x.eventId===ev.id; });
+        var zm   = ZM[ev.id]||{icon:'•',color:'#888',label:'?'};
+        var best = er && er.rank!=null && er.rank===bestRank[k][ev.id];
+        return _buildScorePill(sc||null, er||null, ev, zm, best, false);
+      }).join('');
+
+      var dots = scoredEvs.map(function(ev){
+        var sc = state.scores.find(function(s){ return s.teamId===r.team.id&&s.eventId===ev.id; });
+        var zm = ZM[ev.id]||{icon:'•'};
+        return '<span class="res-card-ev-dot" style="opacity:'+(sc?'1':'.2')+'">'+zm.icon+'</span>';
+      }).join('');
+
+      return '<div class="res-card '+rankCls+'">'
+        +'<div class="res-card-stripe" style="background:'+stripeCol+'"></div>'
+        +'<div class="res-card-hdr">'+medHtml
+          +'<div class="res-card-name">'
+            +'<div class="res-card-last" style="white-space:normal;line-height:1.15;font-size:clamp(11px,1.1vw,15px)">'+HyroxStore.formatTeamDisplayName(r.team)+'</div>'
+            +'<div class="res-card-first"></div>'
+          +'</div>'
+        +'</div>'
+        +'<div class="res-card-scores">'+pills+'</div>'
+        +'<div class="res-card-footer">'
+          +'<div>'
+            +'<div class="res-card-total-val" style="color:'+totalCol+'">'+(scored?r.total:'\u2014')+'</div>'
+            +'<div class="res-card-total-lbl">'+(scored?'points':'')+'</div>'
+          +'</div>'
+          +'<div class="res-card-complete">'+dots+'</div>'
+        +'</div>'
+        +'</div>';
+    }).join('');
+
+    var podiumHtml = '<div class="res-podium">'+cards+'</div>';
+
+    // Extra rows (4th+)
+    var extrasHtml = '';
+    if(extraGroup.length){
+      var rows = extraGroup.map(function(r,i){
+        var pos    = i+4;
+        var scored = r.scoredCount>0;
+        var pills  = scoredEvs.map(function(ev){
+          var sc   = state.scores.find(function(s){ return s.teamId===r.team.id&&s.eventId===ev.id; });
+          var er   = r.eventRanks.find(function(x){ return x.eventId===ev.id; });
+          var zm   = ZM[ev.id]||{icon:'•',color:'#888',label:'?'};
+          var best = er && er.rank!=null && er.rank===bestRank[k][ev.id];
+          return _buildScorePill(sc||null, er||null, ev, zm, best, true);
+        }).join('');
+        var totalHtml = scored
+          ? r.total+'<span style="font-size:11px;opacity:.5;margin-left:3px">pts</span>'
+          : '\u2014';
+        return '<div class="res-extra-row">'
+          +'<div class="res-extra-rank">'+pos+'</div>'
+          +'<div class="res-extra-name">'
+            +'<div class="res-extra-last" style="white-space:normal">'+HyroxStore.formatTeamDisplayName(r.team)+'</div>'
+            +'<div class="res-extra-first"></div>'
+          +'</div>'
+          +'<div class="res-extra-pills">'+pills+'</div>'
+          +'<div class="res-extra-total" style="color:'+(scored?'var(--volt)':'var(--faint)')+'">'+totalHtml+'</div>'
+          +'</div>';
+      }).join('');
+      extrasHtml = '<div class="res-extras">'+rows+'</div>';
+    }
+
+    return '<div class="res-section">'+hdr+podiumHtml+extrasHtml+'</div>';
+  }).join('');
+
+  // [renderResults désactivé — vue unique live]
+}
+
+/* ── AUTO-SCROLL ENGINE ────────────────────────────────────────── */
+// px/s de défilement
+const SCROLL_SPEED = 40;
+// Pause en ms en haut et en bas avant d'inverser
+const SCROLL_PAUSE = 2200;
+
+const scrollers = {}; // id -> { raf, dir, paused }
+
+function stopScroll(id){
+  if(scrollers[id]){
+    cancelAnimationFrame(scrollers[id].raf);
+    delete scrollers[id];
+  }
+}
+
+function startScroll(el){
+  if(!el) return;
+  const id = el.id || Math.random();
+  stopScroll(id);
+
+  let dir      = 1;        // 1 = vers le bas, -1 = vers le haut
+  let pausing  = false;
+  let pauseEnd = 0;
+  let last     = null;
+
+  function step(ts){
+    if(!document.body.contains(el)){ stopScroll(id); return; }
+
+    if(last===null) last=ts;
+    const dt = (ts-last)/1000; // secondes
+    last = ts;
+
+    if(pausing){
+      if(ts >= pauseEnd){ pausing=false; }
+      scrollers[id].raf = requestAnimationFrame(step);
+      return;
+    }
+
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    if(maxScroll <= 0){ scrollers[id].raf = requestAnimationFrame(step); return; }
+
+    el.scrollTop += dir * SCROLL_SPEED * dt;
+
+    if(dir===1 && el.scrollTop >= maxScroll - 2){
+      el.scrollTop = maxScroll;
+      dir = -1; pausing = true; pauseEnd = ts + SCROLL_PAUSE;
+    } else if(dir===-1 && el.scrollTop <= 2){
+      el.scrollTop = 0;
+      dir = 1; pausing = true; pauseEnd = ts + SCROLL_PAUSE;
+    }
+
+    scrollers[id] = { raf: requestAnimationFrame(step), dir, pausing };
+  }
+
+  scrollers[id] = { raf: requestAnimationFrame(step), dir, pausing:true, pauseEnd: performance.now()+800 };
+}
+
+function startLiveScrollers(){
+  Object.keys(scrollers).forEach(stopScroll);
+  setTimeout(()=>{
+    startScroll(document.getElementById('tv-live-grid'));
+    startScroll(document.getElementById('lbScroll'));
+  }, 300);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   POPUP DÉPART — son + décompte
+   Décompte final : piste 10s (URL GitHub Pages hyflender) — un clic
+   / toucher auparavant débloque l’autoplay.
+   Bips (Web Audio) ailleurs : getTvAudioContext + resume().
+══════════════════════════════════════════════════════════════ */
+let _depTimer = null;
+const _depShown = new Set();
+let _tvAudioCtx = null;
+
+function getTvAudioContext() {
+  if (_tvAudioCtx) return _tvAudioCtx;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  _tvAudioCtx = new AC();
+  return _tvAudioCtx;
+}
+function _resumeTvAudio() {
+  const ctx = getTvAudioContext();
+  if (ctx && ctx.state === "suspended") {
+    return ctx.resume().catch(() => {});
+  }
+  return Promise.resolve();
+}
+['click', 'touchstart', 'keydown', 'pointerdown'].forEach((ev) => {
+  document.addEventListener(
+    ev,
+    () => {
+      _resumeTvAudio();
+    },
+    { capture: true, passive: true }
+  );
+});
+
+function _playOneBeep(frequency, durationSec, gain) {
+  const ctx = getTvAudioContext();
+  if (!ctx) return;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.connect(g);
+  g.connect(ctx.destination);
+  o.type = "sine";
+  o.frequency.setValueAtTime(frequency, ctx.currentTime);
+  const t0 = ctx.currentTime;
+  const d = Math.max(0.05, durationSec);
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(gain, t0 + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0008, t0 + d);
+  o.start(t0);
+  o.stop(t0 + d + 0.02);
+}
+/** Piste 10s (hyflender.github.io) — démarrage 1 s avant l’affichage « 10 » (dès 11 s restants) */
+function _stopDepCountdownMp3() {
+  const a = document.getElementById("dep-countdown-audio");
+  if (!a) return;
+  try {
+    a.pause();
+    a.currentTime = 0;
+  } catch (_) {}
+}
+function _startDepCountdownAudio(secsRemaining) {
+  if (secsRemaining > 11) return;
+  const a = document.getElementById("dep-countdown-audio");
+  if (!a) return;
+  const go = () => {
+    try {
+      _resumeTvAudio();
+      // Entrée à t=0 de la piste = affichage « 11 s » ; « 10 s » = 1 s dans la piste
+      const d = a.duration;
+      if (d > 0 && isFinite(d) && d < 20) {
+        const off = Math.max(0, Math.min(d - 0.04, 11 - secsRemaining));
+        a.currentTime = off;
+      } else {
+        a.currentTime = Math.max(0, 11 - secsRemaining);
+      }
+      const p = a.play();
+      if (p && typeof p.then === "function") p.catch(() => {});
+    } catch (_) {}
+  };
+  if (a.readyState >= 1) go();
+  else a.addEventListener("loadeddata", go, { once: true });
+}
+function _punch(el){ el.classList.remove('num-punch'); void el.offsetWidth; el.classList.add('num-punch'); }
+
+/* ── Ring SVG helpers ─────────────────────────────────────── */
+const RING_R   = 128;
+const RING_C   = 2 * Math.PI * RING_R; // ≈ 804
+
+function setRing(secs, total){
+  const fill = document.getElementById('dep-ring-fill');
+  if(!fill) return;
+  const progress = Math.max(0, Math.min(1, secs / Math.max(total,1)));
+  fill.style.strokeDasharray  = RING_C;
+  fill.style.strokeDashoffset = RING_C * (1 - progress);
+}
+
+function setRingColor(color){
+  const fill = document.getElementById('dep-ring-fill');
+  if(fill) fill.style.stroke = color;
+  document.getElementById('dep-overlay').style.setProperty('--dc', color);
+  document.getElementById('dep-bg-glow').style.background =
+    `radial-gradient(ellipse 55% 80% at 75% 50%, color-mix(in srgb,${color} 18%,transparent) 0%, transparent 65%),`+
+    `radial-gradient(ellipse 40% 50% at 30% 50%, color-mix(in srgb,${color} 8%,transparent) 0%, transparent 60%)`;
+  const stripe = document.getElementById('dep-stripe');
+  if(stripe){ stripe.style.background=color; stripe.style.boxShadow=`0 0 40px ${color}, 0 0 80px ${color}`; }
+}
+
+function hideDep(){
+  _stopDepCountdownMp3();
+  document.getElementById('dep-overlay').classList.remove('show');
+  if(_depTimer){ clearInterval(_depTimer); _depTimer=null; }
+  const du = document.getElementById('dep-unit');
+  if(du) du.setAttribute('hidden', '');
+  document.getElementById('dep-go').style.display='none';
+  document.getElementById('dep-cd').style.display='block';
+  const dl = document.getElementById('dep-label');
+  if(dl){
+    dl.style.display = '';
+    dl.textContent = 'Départ imminent';
+  }
+}
+
+/* ══ ÉCRAN GO + CONFETTIS ══════════════════════════════════════ */
+let _goRAF = null;
+const _confetti = [];
+
+function showGoScreen(meta, athletes, color){
+  const scr = document.getElementById('go-screen');
+  scr.style.setProperty('--gc', color);
+
+  // Entête créneau
+  document.getElementById('go-zone-icon').textContent = meta.icon||'🏁';
+  document.getElementById('go-zone-name').textContent = meta.label||'';
+
+  // Athlètes
+  document.getElementById('go-athletes').innerHTML = (athletes||[]).map(a=>{
+    const catCol = HyroxStore.effectiveCategory(a)==='Pro'?'#F87171':color;
+    return `<div class="go-ath">
+      <div class="go-ath-last" style="white-space:normal;font-size:clamp(11px,1.2vw,16px)">${HyroxStore.formatTeamDisplayName(a)}</div>
+      <div class="go-ath-first"></div>
+      <div class="go-ath-cat" style="color:${catCol}">${HyroxStore.formatTeamDivisionLine(a)}</div>
+    </div>`;
+  }).join('');
+
+  // Reset word animation
+  const word = document.getElementById('go-word');
+  word.style.color = color;
+  word.style.textShadow = `0 0 80px ${color}`;
+  word.classList.remove('blasting-go');
+  void word.offsetWidth;
+  word.classList.add('blasting-go');
+
+  // Afficher
+  scr.classList.remove('flash-in');
+  void scr.offsetWidth;
+  scr.classList.add('show','flash-in');
+
+  // Lancer confettis
+  _launchConfetti(color);
+
+  // Auto-fermeture après 4s
+  setTimeout(()=>hideGoScreen(), 4000);
+}
+
+function hideGoScreen(){
+  const scr = document.getElementById('go-screen');
+  scr.classList.remove('show');
+  if(_goRAF){ cancelAnimationFrame(_goRAF); _goRAF=null; }
+  _confetti.length = 0;
+}
+
+/* ══ Pop-up ARRIVÉE (mur) — détection + confettis dédiés ══ */
+const _arrivalFC = [];
+let _arrivalCRaf = null;
+let _arrivalInit = false;
+const _arrivalPopped = new Set();
+const _arrivalQueue = [];
+let _arrivalShowing = false;
+let _arrivalHideT = 0;
+
+function _launchArrivalConfetti() {
+  const canvas = document.getElementById("finish-canvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  if (_arrivalCRaf) {
+    cancelAnimationFrame(_arrivalCRaf);
+    _arrivalCRaf = null;
+  }
+  _arrivalFC.length = 0;
+  const palette = ["#FFD700", "#C6FF00", "#fff", "#D9A23B", "#A3E635", "#A78BFA", "#F472B6"];
+  for (let i = 0; i < 200; i++) {
+    const col = palette[Math.floor(Math.random() * palette.length)];
+    _arrivalFC.push({
+      x: Math.random() * canvas.width,
+      y: -30 - Math.random() * canvas.height * 0.4,
+      r: 3 + Math.random() * 8,
+      w: 6 + Math.random() * 12,
+      h: 3 + Math.random() * 8,
+      type: Math.random() < 0.5 ? "rect" : "circle",
+      color: col,
+      vx: (Math.random() - 0.5) * 5,
+      vy: 2.5 + Math.random() * 5,
+      rot: Math.random() * Math.PI * 2,
+      rotV: (Math.random() - 0.5) * 0.2,
+      alpha: 1,
+      gravity: 0.1 + Math.random() * 0.12,
+      wave: Math.random() * Math.PI * 2,
+      waveA: 0.4 + Math.random() * 1.2,
+    });
+  }
+  for (let side = 0; side < 2; side++) {
+    for (let j = 0; j < 32; j++) {
+      const col = palette[Math.floor(Math.random() * palette.length)];
+      _arrivalFC.push({
+        x: side === 0 ? 0 : canvas.width,
+        y: canvas.height * (0.35 + Math.random() * 0.35),
+        r: 3 + Math.random() * 6,
+        w: 7 + Math.random() * 10,
+        h: 3 + Math.random() * 7,
+        type: Math.random() < 0.5 ? "rect" : "circle",
+        color: col,
+        vx: (side === 0 ? 1 : -1) * (6 + Math.random() * 9),
+        vy: -(3 + Math.random() * 7),
+        rot: Math.random() * Math.PI * 2,
+        rotV: (Math.random() - 0.5) * 0.25,
+        alpha: 1,
+        gravity: 0.15 + Math.random() * 0.1,
+        wave: Math.random() * Math.PI * 2,
+        waveA: 0.6 + Math.random() * 1,
+      });
+    }
+  }
+  let t = 0;
+  function step() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    t++;
+    let alive = false;
+    for (const p of _arrivalFC) {
+      p.x += p.vx + Math.sin(p.wave + t * 0.05) * p.waveA;
+      p.y += p.vy;
+      p.vy += p.gravity;
+      p.rot += p.rotV;
+      if (p.y > canvas.height + 20) p.alpha = 0;
+      if (p.alpha <= 0) continue;
+      alive = true;
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      if (p.type === "circle") {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, p.r, p.r * 0.45, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      }
+      ctx.restore();
+    }
+    if (alive) _arrivalCRaf = requestAnimationFrame(step);
+    else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      _arrivalCRaf = null;
+    }
+  }
+  _arrivalCRaf = requestAnimationFrame(step);
+}
+
+function _playArrivalCheer() {
+  try {
+    setTimeout(() => _playOneBeep(523, 0.12, 0.16), 0);
+    setTimeout(() => _playOneBeep(659, 0.12, 0.18), 90);
+    setTimeout(() => _playOneBeep(784, 0.2, 0.14), 180);
+  } catch (_) {}
+}
+
+function showArrivalPopup(ath) {
+  const el = document.getElementById("finish-arrival");
+  if (!el) return;
+  const schedule = HyroxStore.buildHeatSchedule(state);
+  const hb = schedule.find((s) => s.athletes.some((a) => a.id === ath.id));
+  const name = HyroxStore.formatTeamDisplayName(ath) || "—";
+  const divL = HyroxStore.formatTeamDivisionLine(ath) || "—";
+  const tSec = HyroxStore.getHyroxGlobalTimeSec(state, ath.id);
+  const chrono =
+    tSec != null
+      ? HyroxStore.formatHyroxRaceDuration(tSec)
+      : tvArrivalChronoText(state, ath);
+  document.getElementById("finish-name").textContent = name;
+  document.getElementById("finish-div").textContent = divL;
+  document.getElementById("finish-chrono").textContent = chrono;
+  const heatEl = document.getElementById("finish-heat");
+  if (heatEl) heatEl.textContent = hb ? "Heat " + hb.heat : "";
+  const kicker = document.getElementById("finish-kicker");
+  if (kicker) kicker.textContent = (state && state.config && state.config.competitionName) || "Hyrox";
+  el.classList.remove("show");
+  void el.offsetWidth;
+  el.classList.add("show");
+  _launchArrivalConfetti();
+  _playArrivalCheer();
+  if (_arrivalHideT) clearTimeout(_arrivalHideT);
+  _arrivalHideT = setTimeout(hideArrivalPopup, 6500);
+}
+
+function hideArrivalPopup() {
+  const el = document.getElementById("finish-arrival");
+  if (el) el.classList.remove("show");
+  if (_arrivalCRaf) {
+    cancelAnimationFrame(_arrivalCRaf);
+    _arrivalCRaf = null;
+  }
+  _arrivalFC.length = 0;
+  const c = document.getElementById("finish-canvas");
+  if (c) {
+    const x = c.getContext("2d");
+    if (x) x.clearRect(0, 0, c.width, c.height);
+  }
+  if (_arrivalHideT) {
+    clearTimeout(_arrivalHideT);
+    _arrivalHideT = 0;
+  }
+  _arrivalShowing = false;
+  setTimeout(processArrivalQueue, 450);
+}
+
+function processArrivalQueue() {
+  if (_arrivalShowing) return;
+  if (!_arrivalQueue.length) return;
+  const ath = _arrivalQueue.shift();
+  if (!ath) {
+    processArrivalQueue();
+    return;
+  }
+  _arrivalShowing = true;
+  showArrivalPopup(ath);
+}
+
+function checkArrivalPopups() {
+  if (!state) return;
+  const nm = nowMin();
+  const nowDone = new Set();
+  (state.teams || []).forEach((ath) => {
+    const t0 = getAthleteHeatStart(ath, state);
+    if (t0 == null) return;
+    if (athleteTvRaceFinished(ath, state, nm).finished) nowDone.add(ath.id);
+  });
+  (state.teams || []).forEach((ath) => {
+    if (nowDone.has(ath.id)) {
+      if (!_arrivalPopped.has(ath.id)) {
+        _arrivalPopped.add(ath.id);
+        if (_arrivalInit) _arrivalQueue.push(ath);
+      }
+    } else {
+      _arrivalPopped.delete(ath.id);
+    }
+  });
+  if (!_arrivalInit) {
+    _arrivalInit = true;
+    _arrivalQueue.length = 0;
+  } else {
+    processArrivalQueue();
+  }
+}
+
+function _launchConfetti(accentColor){
+  const canvas = document.getElementById('go-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  if(_goRAF){ cancelAnimationFrame(_goRAF); _goRAF=null; }
+  _confetti.length = 0;
+
+  // Palette : couleur d’accent + blanc + or + complémentaires
+  const palette = [accentColor, '#ffffff', '#FFD700', '#F87171', '#00DDFF', '#D9A23B', '#C6FF00'];
+
+  // Générer 220 confettis depuis le haut
+  for(let i=0;i<220;i++){
+    const col = palette[Math.floor(Math.random()*palette.length)];
+    _confetti.push({
+      x: Math.random()*canvas.width,
+      y: -20 - Math.random()*canvas.height*.5,
+      r: 4 + Math.random()*7,
+      w: 7 + Math.random()*12,   // largeur pour les rectangles
+      h: 4 + Math.random()*8,    // hauteur
+      type: Math.random()<.5 ? 'rect' : 'circle',
+      color: col,
+      vx: (Math.random()-0.5)*6,
+      vy: 3 + Math.random()*6,
+      rot: Math.random()*Math.PI*2,
+      rotV: (Math.random()-0.5)*.25,
+      alpha: 1,
+      gravity: .12 + Math.random()*.1,
+      wave: Math.random()*Math.PI*2,
+      waveA: .5 + Math.random()*1.5,
+    });
+  }
+
+  // Lancer depuis les deux coins en plus
+  for(let side=0;side<2;side++){
+    for(let i=0;i<40;i++){
+      const col = palette[Math.floor(Math.random()*palette.length)];
+      _confetti.push({
+        x: side===0 ? 0 : canvas.width,
+        y: canvas.height * (.4 + Math.random()*.3),
+        r: 4+Math.random()*6, w:8+Math.random()*10, h:4+Math.random()*7,
+        type: Math.random()<.5?'rect':'circle',
+        color: col,
+        vx: (side===0?1:-1)*(8+Math.random()*10),
+        vy: -(4+Math.random()*8),
+        rot: Math.random()*Math.PI*2,
+        rotV: (Math.random()-0.5)*.3,
+        alpha:1, gravity:.18+Math.random()*.08,
+        wave:Math.random()*Math.PI*2, waveA:.8+Math.random()*1.2,
+      });
+    }
+  }
+
+  let t = 0;
+  function step(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    t++;
+    let alive = false;
+    for(const p of _confetti){
+      p.x  += p.vx + Math.sin(p.wave + t*.05)*p.waveA;
+      p.y  += p.vy;
+      p.vy += p.gravity;
+      p.rot += p.rotV;
+      if(p.y > canvas.height + 20) p.alpha = 0;
+      if(p.alpha <= 0) continue;
+      alive = true;
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      if(p.type==='circle'){
+        ctx.beginPath(); ctx.ellipse(0,0,p.r,p.r*.45,0,0,Math.PI*2); ctx.fill();
+      } else {
+        ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      }
+      ctx.restore();
+    }
+    if(alive) _goRAF = requestAnimationFrame(step);
+    else { ctx.clearRect(0,0,canvas.width,canvas.height); _goRAF=null; }
+  }
+  _goRAF = requestAnimationFrame(step);
+}
+
+function showDep(entries, secsLeft){
+  const overlay = document.getElementById('dep-overlay');
+  const cdEl    = document.getElementById('dep-cd');
+  const goEl    = document.getElementById('dep-go');
+  const barEl   = document.getElementById('dep-bar');
+
+  // Créneau / épreuve (planning)
+  const meta  = ZM[entries[0].eventId] || { icon:'📍', label:'Épreuve', color:'#C6FF00' };
+  const zColor = meta.color || '#C6FF00';
+  const ev    = entries[0].ev;
+
+  // Couleur du bandeau départ
+  setRingColor(zColor);
+
+  // Heat badge
+  const heats = [...new Set(entries.map(e=>e.heat))];
+  document.getElementById('dep-heat-badge').textContent = 'HEAT ' + heats.join(' · ');
+
+  // Libellé créneau (nom d’épreuve planning)
+  document.getElementById('dep-zone-icon-big').textContent = meta.icon;
+  document.getElementById('dep-zone-label').textContent = ev && ev.name ? String(ev.name).toUpperCase() : 'DÉPART';
+  document.getElementById('dep-zone-name').textContent = meta.label;
+
+  // Athletes — numérotés, avec bande de couleur gauche
+  const allAths = [...new Map(entries.flatMap(e=>e.athletes).map(a=>[a.id,a])).values()];
+  document.getElementById('dep-aths').innerHTML = allAths.map((a, i)=>{
+    const catCol = HyroxStore.effectiveCategory(a)==='Pro'?'#F87171':zColor;
+    return `<div class="dep-ath-chip" style="--dc:${zColor}">
+      <div class="dep-ath-chip-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="dep-ath-chip-body">
+        <div class="dep-ath-chip-name" style="line-height:1.1">${HyroxStore.formatTeamDisplayName(a)}</div>
+        <div class="dep-ath-chip-meta" style="color:${catCol}">${HyroxStore.formatTeamDivisionLine(a)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Reset countdown display
+  cdEl.textContent = secsLeft; cdEl.className = ''; cdEl.style.display = 'block';
+  const depLbl = document.getElementById('dep-label');
+  if (depLbl) {
+    depLbl.style.display = '';
+    depLbl.textContent = 'Départ imminent';
+  }
+  goEl.style.display = 'none'; goEl.className = '';
+  const depUnit = document.getElementById('dep-unit');
+  if (depUnit) depUnit.setAttribute('hidden', '');
+  const total = Math.max(secsLeft, 1);
+
+  // Init ring & bar
+  _stopDepCountdownMp3();
+  setRing(secsLeft, total);
+  barEl.style.transition = 'none'; barEl.style.width = '0%';
+  overlay.classList.add('show');
+
+  if (secsLeft <= 11) _startDepCountdownAudio(secsLeft);
+
+  if(_depTimer) clearInterval(_depTimer);
+  let secs = secsLeft;
+  _depTimer = setInterval(()=>{
+    secs--;
+    if(secs < 0){ clearInterval(_depTimer); _depTimer = null; return; }
+
+    cdEl.textContent = secs;
+    barEl.style.transition = 'width 1s linear';
+    barEl.style.width = ((total - secs) / total * 100) + '%';
+
+    // Ring
+    setRing(secs, total);
+
+    // Couleur ring + chiffre selon urgence
+    cdEl.className = '';
+    if(secs <= 3 && secs > 0){
+      const urgCols = { 3:'#f0a050', 2:'#e84040', 1:'#ff1a1a' };
+      const c = urgCols[secs] || zColor;
+      cdEl.classList.add('c'+secs);
+      setRingColor(c);
+      _punch(cdEl);
+    } else if(secs > 3){
+      setRingColor(zColor);
+    }
+
+    if (secs === 11) _startDepCountdownAudio(11);
+
+    if(secs === 0){
+      _stopDepCountdownMp3();
+      barEl.style.width = '100%';
+      overlay.classList.remove('show');
+      showGoScreen(meta, allAths, zColor);
+    }
+  }, 1000);
+}
+
+function checkDepartures(){
+  if(!state) return;
+  const nm=nowMin();
+  const entries=fullSchedule(state);
+  const toShow=[];
+  entries.forEach(e=>{
+    const key=`${e.heat}_${e.eventId}`;
+    if(_depShown.has(key)) return;
+    const secs=Math.round((e.zs-nm)*60);
+    if(secs<=60&&secs>=0) toShow.push({...e,secs,key});
+  });
+  if(!toShow.length) return;
+  toShow.forEach(t=>_depShown.add(t.key));
+  const minSecs=Math.min(...toShow.map(t=>t.secs));
+  // Grouper ceux qui démarrent au même moment
+  const atSameTime=toShow.filter(t=>Math.abs(t.secs-minSecs)<=2);
+  showDep(atSameTime, minSecs);
+}
+
+/* ── NEWS TICKER ───────────────────────────────────────────────── */
+let _tickerRAF = null;
+let _tickerPos = null;
+let _tickerTs  = null;
+const TICKER_SPEED = 80; // px/s
+
+function renderTicker(state){
+  const news   = (state.news||[]).filter(n=>n.active!==false && n.text?.trim());
+  const ticker = document.getElementById('news-ticker');
+  const inner  = document.getElementById('tickerInner');
+
+  if(!news.length){
+    ticker.classList.add('hidden');
+    if(_tickerRAF){ cancelAnimationFrame(_tickerRAF); _tickerRAF=null; }
+    return;
+  }
+  ticker.classList.remove('hidden');
+
+  // Rebuild content (pas de duplication)
+  inner.innerHTML = news.map(n=>
+    `<span class="ticker-msg">${n.text}</span><span class="ticker-dot"></span>`
+  ).join('');
+
+  // Lancer le scroll JS depuis la droite
+  if(_tickerRAF){ cancelAnimationFrame(_tickerRAF); _tickerRAF=null; }
+  _tickerPos = null; _tickerTs = null;
+
+  function step(ts){
+    const track = inner.parentElement;
+    if(!track || !document.body.contains(inner)){ _tickerRAF=null; return; }
+
+    // Initialiser la position hors-écran droite
+    if(_tickerPos===null) _tickerPos = track.clientWidth;
+    if(_tickerTs===null)  _tickerTs  = ts;
+
+    const dt = Math.min((ts - _tickerTs) / 1000, 0.1); // cap à 100ms pour éviter les sauts
+    _tickerTs = ts;
+    _tickerPos -= TICKER_SPEED * dt;
+
+    // Quand le contenu est sorti par la gauche → recommencer depuis la droite
+    if(_tickerPos + inner.scrollWidth < 0) _tickerPos = track.clientWidth;
+
+    inner.style.transform = `translateX(${_tickerPos}px)`;
+    _tickerRAF = requestAnimationFrame(step);
+  }
+  _tickerRAF = requestAnimationFrame(step);
+}
+
+
+
+/* ── TOAST (score live) ────────────────────────────────────────── */
+let prevScoreSnapshot = '';
+
+function scoreVal(s){
+  if(s==null) return '';
+  if(s.dnf) return 'dnf';
+  const v = s.rawValue;
+  if(v!=null && v!=='') return String(v);
+  return String(s.performance ?? '');
+}
+
+function checkNewScores(nextState){
+  const list = (nextState.scores||[]).map(s=>({ t:s.teamId, e:s.eventId, v:scoreVal(s) }));
+  const snapshot = JSON.stringify(list.sort((a,b)=>a.t.localeCompare(b.t)||a.e.localeCompare(b.e)));
+  if(prevScoreSnapshot && snapshot !== prevScoreSnapshot){
+    const prev = JSON.parse(prevScoreSnapshot||'[]');
+    const byKey = p=>p.t+'\0'+p.e;
+    const prevMap = new Map(prev.map(p=>[byKey(p),p]));
+    (nextState.scores||[]).forEach(ns=>{
+      const key = byKey({ t:ns.teamId, e:ns.eventId });
+      const was = prevMap.get(key);
+      const vNow = scoreVal(ns);
+      if(was && was.v === vNow) return;
+      const ath=nextState.teams.find(t=>t.id===ns.teamId);
+      const ev=nextState.events.find(e=>e.id===ns.eventId);
+      if(ath && ev) showScoreUpdateToast({ ath, ev, performance:ns.performance || vNow, isUpdate:!!was });
+    });
+  }
+  prevScoreSnapshot = snapshot;
+}
+
+function showScoreUpdateToast({ ath, ev, performance, isUpdate }){
+  const wrap=document.getElementById('toast');
+  if(!wrap) return;
+  const meta = ZM[ev.id] || { color:'#C6FF00', icon:'🏅', label:ev.name || 'Épreuve' };
+  const el=document.createElement('div');
+  el.className='toast-item';
+  el.style.setProperty('--zcolor', meta.color);
+  const ln=(ath.lastName||'').toUpperCase();
+  const fn=ath.firstName?` ${ath.firstName}`:'';
+  const evShort = (ev.name || "").trim();
+  el.innerHTML=`
+    <div class="toast-inner">
+      <div class="toast-zone-ico" style="color:${meta.color}">${meta.icon||'🏅'}</div>
+      <div class="toast-txt">
+        <div class="toast-row1">
+          <span class="toast-zone">${meta.label}</span>
+          <span class="toast-badge ${isUpdate?'maj':'nouv'}">${isUpdate?'Modifié':'Nouveau'}</span>
+        </div>
+        <div class="toast-ath">${ln}${fn}</div>
+        <div class="toast-ev">${evShort}</div>
+        <div class="toast-score">${escHtml(String(performance||'—'))}<span class="toast-hint">${isUpdate?'score mis à jour':'score enregistré'}</span></div>
+      </div>
+    </div>
+    <div class="toast-pbar"><div style="background:${meta.color}"></div></div>`;
+  wrap.appendChild(el);
+  if(wrap.children.length>4) wrap.firstElementChild?.remove();
+  setTimeout(()=>{ el.classList.add('out'); setTimeout(()=>el.remove(),360); },3800);
+}
+
+function escHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ── FULLSCREEN ────────────────────────────────────────────────── */
+document.getElementById('fsBtn')?.addEventListener('click',()=>{
+  _resumeTvAudio();
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen();
+});
+document.getElementById('testBtn')?.addEventListener('click',()=>{
+  _resumeTvAudio();
+  // Construit un faux départ avec les vrais athlètes du state
+  const athletes = state?.teams?.slice(0,2) || [{lastName:'TEST',firstName:'Athlète',category:'Open',gender:'Homme'}];
+  const fakeEntries = [{
+    heat: 99,
+    athletes,
+    eventId: 'ev_warmup',
+    ev: state?.events?.find(e=>e.id==='ev_warmup'),
+    zs: nowMin() + 10/60,
+    ze: nowMin() + 30,
+  }];
+  _depShown.delete('99_ev_warmup');
+  showDep(fakeEntries, 20);
+});
+
+document.addEventListener('fullscreenchange',()=>{
+  const btn=document.getElementById('fsBtn');
+  if(btn) btn.textContent=document.fullscreenElement?'✕':'⛶';
+});
+
+/* ── TIMECAP ALERT ──────────────────────────────────────────────── */
+const TC_TRIGGER   = 20;  // secondes avant l'alerte
+const TC_CIRCUMF   = 207.3; // 2π × 33
+const _tcAlerted   = new Set();
+let   _tcActive    = false;
+let   _tcEndSec    = 0;
+let   _tcAnimFrame = null;
+
+// Milestones par ev_id: { at (min depuis début créneau), label, sub, icon }
+const TC_MILESTONES = {};
+
+function _playAlertBeep(color) {
+  const run = () => {
+    try {
+      const ctx = getTvAudioContext();
+      if (!ctx) return;
+      const freqs = [880, 1100];
+      freqs.forEach((f, i) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.frequency.value = f;
+        o.type = "sine";
+        const t = ctx.currentTime + i * 0.18;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.35, t + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+        o.start(t);
+        o.stop(t + 0.26);
+      });
+    } catch (e) {}
+  };
+  const ctx = getTvAudioContext();
+  if (!ctx) return;
+  if (ctx.state === "suspended") {
+    ctx.resume().then(run).catch(run);
+  } else {
+    run();
+  }
+}
+
+function showTimecapAlert({ color, eventTitle, icon, label, sub, secRemaining, athletes }) {
+  const overlay = document.getElementById('tc-overlay');
+  if(!overlay) return;
+  const arc   = document.getElementById('tc-arc');
+  const numEl = document.getElementById('tc-num');
+
+  overlay.style.setProperty('--tc-color', color);
+  const hexToRgb = h => { const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16); return `${r},${g},${b}`; };
+  if(color.startsWith('#')) overlay.style.setProperty('--tc-rgb', hexToRgb(color));
+  arc.style.stroke = color;
+
+  document.getElementById('tc-ctx-lbl').textContent = eventTitle;
+  document.getElementById('tc-label').textContent    = label;
+  document.getElementById('tc-sub').textContent      = sub;
+  document.getElementById('tc-icon').textContent     = icon;
+
+  // Athlètes concernés
+  const athEl = document.getElementById('tc-athletes');
+  athEl.innerHTML = (athletes && athletes.length)
+    ? athletes.map(n=>`<div class="tc-ath-tag">${n}</div>`).join('')
+    : '';
+
+  _tcEndSec = Date.now() + secRemaining * 1000;
+  _tcActive = true;
+  overlay.classList.add('show');
+  _playAlertBeep(color);
+
+  cancelAnimationFrame(_tcAnimFrame);
+  function animRing(){
+    const rem = Math.max(0, (_tcEndSec - Date.now()) / 1000);
+    const pct  = rem / TC_TRIGGER;
+    arc.style.strokeDashoffset = (TC_CIRCUMF * (1 - pct)).toFixed(2);
+    numEl.textContent = Math.ceil(rem);
+    if(rem > 0){
+      _tcAnimFrame = requestAnimationFrame(animRing);
+    } else {
+      numEl.textContent = 'STOP';
+      arc.style.strokeDashoffset = TC_CIRCUMF;
+      setTimeout(()=>{ overlay.classList.remove('show'); _tcActive=false; }, 1800);
+    }
+  }
+  animRing();
+}
+
+function checkTimecapAlerts(nm) {
+  if (!state) return;
+  const evNameById = Object.fromEntries((state.events || []).map((e) => [e.id, e.name || e.id]));
+  const winMap = getEventWindowMap(state, nm);
+  const byKey = new Map();
+  Object.keys(TC_MILESTONES).forEach((evId) => {
+    const milestones = TC_MILESTONES[evId];
+    if (!milestones) return;
+    (winMap[evId] || []).forEach(({ athlete, elapsed }) => {
+      const elapsedMin = typeof elapsed === "number" && isFinite(elapsed) ? elapsed : 0;
+      if (elapsedMin < 0) return;
+      const name = (HyroxStore.formatTeamDisplayName(athlete) || "").trim() || (athlete.lastName || "");
+      milestones.forEach((m) => {
+        const secUntil = Math.round((m.at - elapsedMin) * 60);
+        if (secUntil > 0 && secUntil <= TC_TRIGGER) {
+          const id = `${evId}:${athlete.id}:${m.at}`;
+          if (!byKey.has(id)) {
+            byKey.set(id, {
+              key: id,
+              color: m.color,
+              eventTitle: evNameById[evId] || evId,
+              icon: m.icon,
+              label: m.label,
+              sub: m.sub,
+              secRemaining: secUntil,
+              athletes: name ? [name] : [],
+            });
+          } else if (name) {
+            const g = byKey.get(id);
+            if (g.athletes.indexOf(name) < 0) g.athletes.push(name);
+          }
+        }
+      });
+    });
+  });
+  byKey.forEach((info, key) => {
+    if (!_tcAlerted.has(key)) {
+      _tcAlerted.add(key);
+      showTimecapAlert(info);
+    }
+  });
+}
+
+/* ── CLOCK (1 s) : état = cache, grille + chrono = temps réel, pas de patch partiel obsolète ─ */
+function tickClock() {
+  const d = new Date();
+  const hdr = document.getElementById("hdrClock");
+  if (hdr) hdr.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+  state = HyroxStore.loadState();
+  renderLiveGrid(state);
+  renderTimeline(state);
+
+  checkDepartures();
+  checkTimecapAlerts(nowMin());
+  checkArrivalPopups();
+}
+
+/* ── RENDER ALL ────────────────────────────────────────────────── */
+let state=null;
+let _cachedRanking=null; // calculé une seule fois par render
+
+function render(){
+  if(!state) return;
+  _cachedRanking = HyroxStore.getRanking(state); // 1 seul calcul par cycle
+  renderTicker(state);
+  renderLiveGrid(state);
+  renderLeaderboard(state);
+  renderTimeline(state);
+  startLiveScrollers();
+}
+
+/* ── INIT ──────────────────────────────────────────────────────── */
+const TV_CLOUD_INIT_MS = 10000; // ne pas rester sur l’écran de chargement si le fetch cloud ne répond pas
+
+async function init(){
+  const fClose = document.getElementById("finish-close");
+  if (fClose) fClose.addEventListener("click", () => hideArrivalPopup());
+  window.addEventListener("resize", () => {
+    const el = document.getElementById("finish-arrival");
+    if (el && el.classList.contains("show")) _launchArrivalConfetti();
+  });
+
+  tickClock();
+  setInterval(tickClock, 1000);
+  /* Classement + fil d’info : moins fréquent que la grille (coût getRanking) */
+  setInterval(render, 15000);
+
+  try {
+    try {
+      await Promise.race([
+        HyroxStore.whenCloudReady(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('cloud-timeout')), TV_CLOUD_INIT_MS)
+        ),
+      ]);
+      state = HyroxStore.loadState();
+      const hs = document.getElementById('hdrSync');
+      if (hs) hs.textContent = 'Cloud · OK';
+    } catch (e) {
+      state = HyroxStore.loadState();
+      const hs = document.getElementById('hdrSync');
+      if (hs) {
+        hs.textContent = (e && e.message === 'cloud-timeout') ? 'Réseau…' : 'Hors ligne';
+      }
+      // En cas de timeout, le pull initial peut encore finir en arrière-plan
+      if (e && e.message === 'cloud-timeout') {
+        HyroxStore.pullRemote()
+          .then((next) => { state = next; const h = document.getElementById('hdrSync'); if (h) h.textContent = 'Cloud · OK'; render(); })
+          .catch(() => {});
+      }
+    }
+
+    // Nom + date de compétition dans le header
+    const cfg = state?.config || {};
+    const dateStr = cfg.date;
+    let compLabel = cfg.competitionName || 'Hyrox Epicure';
+    const hdrComp = document.getElementById('hdrComp');
+    if (dateStr) {
+      const d = new Date(dateStr + 'T12:00:00'); // midi pour éviter les décalages TZ
+      const today = new Date().toISOString().slice(0,10);
+      const isToday = today === dateStr;
+      const fmtDate = d.toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' });
+      compLabel += ` · ${fmtDate}`;
+      if (!isToday) {
+        const isPast = today > dateStr;
+        if (hdrComp) hdrComp.style.color = isPast ? '#888888' : '#C6FF00';
+        compLabel += isPast ? ' (terminée)' : ' (à venir)';
+      } else if (hdrComp) {
+        hdrComp.style.color = '';
+      }
+    }
+    if (hdrComp) hdrComp.textContent = compLabel;
+    (function bootSnap(){
+      const list = (state?.scores||[]).map(s=>({ t:s.teamId, e:s.eventId, v:scoreVal(s) }));
+      list.sort((a,b)=>a.t.localeCompare(b.t)||a.e.localeCompare(b.e));
+      prevScoreSnapshot = JSON.stringify(list);
+    })();
+  } catch (err) {
+    console.error('[TV init]', err);
+    if (!state) state = HyroxStore.loadState();
+  } finally {
+    const loader = document.getElementById('loader');
+    const app = document.getElementById('app');
+    if (loader) loader.classList.add('hidden');
+    setTimeout(() => {
+      if (loader) loader.style.display = 'none';
+      if (app) app.style.display = 'grid';
+    }, 600);
+  }
+
+  render();
+
+  setInterval(async()=>{
+    try {
+      const next = await HyroxStore.pullRemote();
+      checkNewScores(next);
+      state = next;
+      const t = new Date();
+      const hs = document.getElementById('hdrSync');
+      if (hs) hs.textContent = `Cloud · ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`;
+      render();
+    } catch (_) {
+      const hs = document.getElementById('hdrSync');
+      if (hs) hs.textContent = 'Erreur cloud';
+    }
+  }, 10000);
+}
+
+window.addEventListener('hyrox:remote-sync', e=>{
+  if(e.detail.status!=='success') return;
+  const next = HyroxStore.loadState();
+  checkNewScores(next);
+  state = next;
+  render();
+});
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

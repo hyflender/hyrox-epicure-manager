@@ -1,0 +1,186 @@
+/* ══════════════════════════════════════════════════════════════
+   Hyrox Epicure — Auth Modal
+   ══════════════════════════════════════════════════════════════ */
+
+#auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(10,10,10,.92);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: auth-fade-in .25s ease;
+  transition: opacity .3s;
+}
+#auth-overlay.auth-success {
+  opacity: 0;
+  pointer-events: none;
+}
+@keyframes auth-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+#auth-modal {
+  background: #1A1A1A;
+  border: 1px solid #2E2E2E;
+  border-radius: 20px;
+  padding: 40px 36px 32px;
+  width: min(420px, 92vw);
+  box-shadow: 0 32px 80px rgba(0,0,0,.8), 0 0 0 1px rgba(198,255,0,.06);
+  text-align: center;
+  animation: auth-slide-up .3s cubic-bezier(.17,.67,.3,1.1);
+}
+@keyframes auth-slide-up {
+  from { opacity: 0; transform: translateY(24px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+#auth-modal.shake {
+  animation: auth-shake .4s ease;
+}
+@keyframes auth-shake {
+  0%,100% { transform: translateX(0); }
+  20%     { transform: translateX(-8px); }
+  40%     { transform: translateX(8px); }
+  60%     { transform: translateX(-5px); }
+  80%     { transform: translateX(5px); }
+}
+
+#auth-logo {
+  font-size: 11px;
+  font-family: "JetBrains Mono", monospace;
+  letter-spacing: .25em;
+  color: #C6FF00;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+#auth-lock {
+  font-size: 44px;
+  margin-bottom: 12px;
+  filter: grayscale(.3);
+}
+
+#auth-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: .02em;
+  margin-bottom: 8px;
+}
+
+#auth-sub {
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 28px;
+  line-height: 1.55;
+}
+
+#auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#auth-input-wrap {
+  position: relative;
+}
+#auth-password {
+  width: 100%;
+  padding: 13px 44px 13px 16px;
+  background: #111;
+  border: 1.5px solid #333;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 15px;
+  font-family: inherit;
+  transition: border-color .15s, box-shadow .15s;
+  -webkit-appearance: none;
+}
+#auth-password:focus {
+  outline: none;
+  border-color: #C6FF00;
+  box-shadow: 0 0 0 3px rgba(198,255,0,.12);
+}
+#auth-password::placeholder { color: #555; }
+
+#auth-eye {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #555;
+  padding: 4px;
+  line-height: 1;
+  box-shadow: none;
+}
+#auth-eye:hover { color: #aaa; }
+
+#auth-error {
+  font-size: 12px;
+  color: #FF4444;
+  font-family: "JetBrains Mono", monospace;
+  padding: 6px 12px;
+  background: rgba(255,68,68,.08);
+  border: 1px solid rgba(255,68,68,.2);
+  border-radius: 6px;
+}
+#auth-error.hidden { display: none; }
+
+#auth-submit {
+  width: 100%;
+  padding: 13px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 10px;
+  background: #C6FF00;
+  border: none;
+  color: #0A0A0A;
+  cursor: pointer;
+  transition: filter .15s, transform .1s;
+  box-shadow: 0 0 20px rgba(198,255,0,.2);
+}
+#auth-submit:hover  { filter: brightness(1.08); }
+#auth-submit:active { transform: translateY(1px); }
+
+#auth-spinner { display: none; }
+#auth-spinner:not(.hidden) { display: inline; }
+
+#auth-hint {
+  margin-top: 18px;
+  font-size: 11px;
+  color: #555;
+  font-family: "JetBrains Mono", monospace;
+}
+#auth-hint code {
+  background: rgba(198,255,0,.08);
+  color: #C6FF00;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+/* ── Bouton de déconnexion ────────────────────────────────────── */
+#auth-logout-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #666;
+  font-size: 11px;
+  font-family: "JetBrains Mono", monospace;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+  box-shadow: none;
+}
+#auth-logout-btn:hover { color: #aaa; border-color: #555; }

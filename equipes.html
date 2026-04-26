@@ -1,0 +1,764 @@
+﻿<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hyrox Epicure — Équipes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <link rel="stylesheet" href="./assets/css/styles.css" />
+    <link rel="stylesheet" href="./assets/css/admin-bootstrap.css" />
+    <link rel="stylesheet" href="./assets/css/auth.css" />
+    <style>
+      /* Override global label/input styles inside form and sheet */
+      form label { display: flex; flex-direction: column; gap: 5px; }
+      form input, form select { width: 100%; }
+      table.sheet label { display: inline; }
+      table.sheet input, table.sheet select { width: auto; }
+
+      .sheet-wrap { overflow-x: auto; }
+
+      table.sheet {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+
+      table.sheet th {
+        background: var(--card);
+        border: 1px solid var(--border);
+        padding: 6px 8px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .2em;
+        color: var(--accent);
+        user-select: none;
+        white-space: nowrap;
+      }
+
+      table.sheet td {
+        border: 1px solid var(--border);
+        padding: 0;
+        height: 36px;
+        cursor: cell;
+        position: relative;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+
+      table.sheet td .cell-text {
+        display: block;
+        padding: 0 8px;
+        line-height: 36px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 13px;
+        color: var(--text);
+      }
+
+      table.sheet td.active {
+        outline: 2px solid var(--accent);
+        outline-offset: -2px;
+        background: rgba(184, 137, 30, 0.07);
+        z-index: 2;
+      }
+
+      table.sheet td.active .cell-text { display: none; }
+      /* Cellules informatives (sexe inutile en duo, coéquipier en solo, etc.) : pas de mode édition */
+      table.sheet td[data-noedit] { cursor: default; }
+      table.sheet td[data-noedit] .cell-text { color: var(--muted); }
+
+      td[data-field="lastName"]  .cell-input { text-transform: uppercase; }
+      td[data-field="firstName"] .cell-input { text-transform: capitalize; }
+
+      table.sheet td .cell-input {
+        display: none;
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        padding: 0 8px;
+        border: none;
+        outline: none;
+        background: transparent;
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 13px;
+        box-sizing: border-box;
+      }
+
+      table.sheet td.active .cell-input { display: block; }
+
+      table.sheet td .cell-select {
+        display: none;
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        padding: 0 6px;
+        border: none;
+        outline: none;
+        background: var(--surface);
+        color: var(--text);
+        font-family: var(--sans);
+        font-size: 13px;
+        cursor: pointer;
+      }
+      table.sheet td .cell-select option {
+        background: var(--surface);
+        color: var(--text);
+      }
+
+      table.sheet td.active .cell-select { display: block; }
+
+      table.sheet td.col-del {
+        width: 44px;
+        text-align: center;
+        cursor: default;
+      }
+
+      table.sheet td.col-del button {
+        background: none;
+        border: none;
+        color: var(--danger);
+        cursor: pointer;
+        font-size: 15px;
+        padding: 0 6px;
+        line-height: 36px;
+        opacity: .5;
+        transition: opacity .15s;
+        letter-spacing: 0;
+        text-transform: none;
+      }
+
+      table.sheet td.col-del button:hover { opacity: 1; }
+
+      /* Drag & drop */
+      table.sheet td.col-drag {
+        width: 24px;
+        text-align: center;
+        cursor: grab;
+        user-select: none;
+      }
+      table.sheet td.col-drag:active { cursor: grabbing; }
+      .drag-handle {
+        font-size: 16px;
+        color: var(--muted);
+        opacity: .4;
+        transition: opacity .15s;
+        line-height: 36px;
+        display: block;
+      }
+      table.sheet tbody tr:hover .drag-handle { opacity: .9; }
+
+      table.sheet tbody tr.dragging { opacity: .4; }
+      table.sheet tbody tr.drag-over td {
+        background: rgba(184,137,30,.1);
+        border-top: 2px solid var(--accent);
+      }
+
+      table.sheet tbody tr:hover td { background: var(--bg); }
+      table.sheet tbody tr:hover td.active { background: rgba(184,137,30,.07); }
+
+      .sheet-status {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        padding: 6px 2px 0;
+        min-height: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-md navbar-dark border-bottom border-secondary admin-navbar">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="./index.html" title="Accueil public"><span class="fw-bold">HYROX</span> <span class="text-secondary" style="font-size:0.88rem">· Epicure</span></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNav" aria-controls="adminNav" aria-expanded="false" aria-label="Menu">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="adminNav">
+          <ul class="navbar-nav ms-md-auto flex-wrap py-2 py-md-0">
+            <li class="nav-item"><a class="nav-link" href="./portail.html">Espace athlètes</a></li>
+            <li class="nav-item"><a class="nav-link" href="./admin.html">Paramètres</a></li>
+            <li class="nav-item"><a class="nav-link" href="./tv.html" target="_blank" rel="noopener noreferrer">📺 TV</a></li>
+            <li class="nav-item"><a class="nav-link active" href="./equipes.html">Équipes</a></li>
+            <li class="nav-item"><a class="nav-link" href="./planning.html">Planning</a></li>
+            <li class="nav-item"><a class="nav-link" href="./epreuves.html">Épreuves</a></li>
+            <li class="nav-item"><a class="nav-link" href="./scores.html">Passages</a></li>
+            <li class="nav-item"><a class="nav-link" href="./classement.html">Classement</a></li>
+            <li class="nav-item"><a class="nav-link" href="./ops.html">Ops</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container-fluid px-2 px-sm-3 py-3 py-md-4">
+      <div class="row g-3">
+        <div class="col-12 col-xl-4">
+      <section class="card">
+        <h2>Nouvelle inscription</h2>
+        <form id="team-form">
+          <p class="muted small" style="margin:0 0 8px 0">Format type <a href="https://hyroxfrance.com/fr/la-course/" target="_blank" rel="noopener noreferrer">Hyrox</a> : <strong>Open</strong> &amp; <strong>Pro</strong> (solo) ; <strong>Double</strong> (2 personnes) ; <strong>mixte</strong> = charges <strong>Open homme</strong> (pas de Pro).</p>
+          <div class="row" id="row-primary-names">
+            <label>Athlète — Nom <input id="last-name" required /></label>
+            <label>Athlète — Prénom <input id="first-name" required /></label>
+          </div>
+          <div class="row" id="row-partner-names" style="display:none">
+            <label>Coéquipier — Nom <input id="p-last-name" autocomplete="off" /></label>
+            <label>Coéquipier — Prénom <input id="p-first-name" autocomplete="off" /></label>
+          </div>
+          <p class="muted small" style="margin:0 0 6px 0" id="duo-hint" hidden>En <strong>Double</strong> ou <strong>Mixte</strong>, renseignez les <strong>deux</strong> personnes. L’e-mail sert surtout à l’athlète 1 (planning).</p>
+          <div class="row">
+            <label>
+              Format
+              <select id="team-format" title="Solo, duo hommes, duo femmes, ou mixte (charges open homme)">
+                <option value="Solo" selected>Solo</option>
+                <option value="DuoF">Duo femmes</option>
+                <option value="DuoH">Duo hommes</option>
+                <option value="Mixte">Mixte (charges Open H)</option>
+              </select>
+            </label>
+            <label id="label-category">
+              Division
+              <select id="category" title="Open / Pro (Pro indisponible en mixte)">
+                <option value="Open" selected>Open</option>
+                <option value="Pro">Pro</option>
+              </select>
+            </label>
+            <label id="label-gender" style="display:block">
+              Sexe
+              <select id="gender" title="Homme / Femme (solo uniquement)">
+                <option value="">--</option>
+                <option value="Femme">Femme</option>
+                <option value="Homme">Homme</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <label>Club / Box <input id="team-club" /></label>
+          </div>
+          <div class="row">
+            <label>E-mail (optionnel, partage planning) <input id="team-email" type="email" inputmode="email" placeholder="prenom.nom@email.com" autocomplete="off" /></label>
+          </div>
+          <button class="primary" type="submit">Ajouter</button>
+        </form>
+      </section>
+        </div>
+
+        <div class="col-12 col-xl-8">
+      <section class="card">
+        <h2>Équipes &amp; inscriptions</h2>
+        <p class="muted small">Solo = 1 personne. Double / Mixte = 2 noms. <strong>Cliquez une cellule</strong> pour modifier (saisie ou liste). Les cellules <strong>—</strong> grisées (ex. sexe en duo) ne s’éditent pas — c’est voulu.</p>
+        <div class="sheet-wrap table-responsive">
+          <table class="sheet" id="sheet">
+            <thead>
+              <tr>
+                <th style="width:24px"></th>
+                <th style="min-width:100px">Nom (1)</th>
+                <th style="min-width:90px">Prénom (1)</th>
+                <th style="min-width:100px">Nom (2)</th>
+                <th style="min-width:90px">Prénom (2)</th>
+                <th style="min-width:160px">E-mail</th>
+                <th style="min-width:70px">Division</th>
+                <th style="min-width:88px">Format</th>
+                <th style="min-width:70px">Sexe</th>
+                <th style="min-width:60px">Club</th>
+                <th style="min-width:44px">Heat</th>
+                <th style="min-width:64px">Départ</th>
+                <th style="width:44px"></th>
+              </tr>
+            </thead>
+            <tbody id="sheet-body"></tbody>
+          </table>
+        </div>
+        <div class="sheet-status" id="sheet-status"></div>
+      </section>
+        </div>
+      </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+        <script src="./assets/js/auth.js"></script>
+    <script src="./assets/js/data.js"></script>
+    <script>
+      const sheetBody  = document.querySelector("#sheet-body");
+      const sheetStatus = document.querySelector("#sheet-status");
+      const form       = document.querySelector("#team-form");
+      const firstName  = document.querySelector("#first-name");
+      const lastName   = document.querySelector("#last-name");
+      const teamFormatSel = document.querySelector("#team-format");
+      const category   = document.querySelector("#category");
+      const gender     = document.querySelector("#gender");
+      const teamClub   = document.querySelector("#team-club");
+      const teamEmail  = document.querySelector("#team-email");
+      const labelCategory = document.querySelector("#label-category");
+      const labelGender = document.querySelector("#label-gender");
+      const rowPartner   = document.querySelector("#row-partner-names");
+      const pLastName    = document.querySelector("#p-last-name");
+      const pFirstName   = document.querySelector("#p-first-name");
+      const duoHint      = document.querySelector("#duo-hint");
+      const rowPrimary   = document.querySelector("#row-primary-names");
+
+      const COLS = ["lastName","firstName","partnerLastName","partnerFirstName","email","category","teamFormat","gender","club"];
+
+      function syncAddForm() {
+        const f = teamFormatSel.value;
+        const isMix = f === "Mixte";
+        const isSolo = f === "Solo";
+        const isDuo = !isSolo;
+        category.disabled = isMix;
+        if (isMix) category.value = "Open";
+        labelCategory.style.opacity = isMix ? "0.7" : "1";
+        labelGender.style.display = isSolo ? "block" : "none";
+        if (!isSolo) gender.value = "";
+        rowPartner.style.display = isDuo ? "" : "none";
+        duoHint.hidden = !isDuo;
+        if (isDuo) {
+          pLastName.setAttribute("required", "required");
+          pFirstName.setAttribute("required", "required");
+        } else {
+          pLastName.removeAttribute("required");
+          pFirstName.removeAttribute("required");
+        }
+        if (isSolo) {
+          pLastName.value = "";
+          pFirstName.value = "";
+        }
+      }
+      teamFormatSel.addEventListener("change", syncAddForm);
+
+      function getHeatTimes(state) {
+        const schedule = HyroxStore.buildHeatSchedule(state);
+        const map = {};
+        schedule.forEach((h) => h.athletes.forEach((a) => { map[a.id] = h.startTime; }));
+        return map;
+      }
+
+      function makeCell(team, field) {
+        const td = document.createElement("td");
+        const text = document.createElement("span");
+        text.className = "cell-text";
+
+        if (field === "category") {
+          const tf = HyroxStore.getTeamFormat(team);
+          if (tf === "Mixte") {
+            text.textContent = "Open";
+            text.title = "Mixte = charges Open homme (Pro indisponible)";
+            td.appendChild(text);
+            td.dataset.field = field;
+            td.dataset.id = team.id;
+            td.dataset.noedit = "1";
+            return td;
+          }
+          const sel = document.createElement("select");
+          sel.className = "cell-select";
+          ["Open", "Pro"].forEach((v) => {
+            const opt = document.createElement("option");
+            opt.value = v; opt.textContent = v;
+            if (v === (HyroxStore.effectiveCategory(team) || "Open")) opt.selected = true;
+            sel.appendChild(opt);
+          });
+          text.textContent = team[field] || "Open";
+          td.appendChild(text);
+          td.appendChild(sel);
+          td.dataset.field = field;
+          td.dataset.id = team.id;
+          return td;
+        }
+
+        if (field === "teamFormat") {
+          const FMT = [
+            ["Solo", "Solo"],
+            ["DuoF", "Duo femmes"],
+            ["DuoH", "Duo hommes"],
+            ["Mixte", "Mixte"],
+          ];
+          const sel = document.createElement("select");
+          sel.className = "cell-select";
+          const cur = team.teamFormat || (team.gender === "Mixte" ? "Mixte" : "Solo");
+          FMT.forEach(([val, label]) => {
+            const opt = document.createElement("option");
+            opt.value = val; opt.textContent = label;
+            if (val === cur) opt.selected = true;
+            sel.appendChild(opt);
+          });
+          text.textContent = FMT.find((x) => x[0] === cur)?.[1] || cur;
+          td.appendChild(text);
+          td.appendChild(sel);
+          td.dataset.field = field;
+          td.dataset.id = team.id;
+          return td;
+        }
+
+        if (field === "gender") {
+          const tf = HyroxStore.getTeamFormat(team);
+          if (tf !== "Solo") {
+            text.textContent = "—";
+            text.title = "Sexe (Homme/Femme) : uniquement en Solo. En Double/Mixte, le sexe n’entre pas ici.";
+            td.appendChild(text);
+            td.dataset.field = field;
+            td.dataset.id = team.id;
+            td.dataset.noedit = "1";
+            return td;
+          }
+          const sel = document.createElement("select");
+          sel.className = "cell-select";
+          ["", "Femme", "Homme"].forEach((v) => {
+            const opt = document.createElement("option");
+            opt.value = v; opt.textContent = v || "--";
+            if (v === (team[field] || "")) opt.selected = true;
+            sel.appendChild(opt);
+          });
+          text.textContent = team[field] || "—";
+          td.appendChild(text);
+          td.appendChild(sel);
+          td.dataset.field = field;
+          td.dataset.id = team.id;
+          return td;
+        }
+
+        if (field === "partnerLastName" || field === "partnerFirstName") {
+          if (HyroxStore.getTeamFormat(team) === "Solo") {
+            text.textContent = "—";
+            text.title = "2e athlète : renseigné seulement en Double / Mixte";
+            td.appendChild(text);
+            td.dataset.field = field;
+            td.dataset.id = team.id;
+            td.dataset.noedit = "1";
+            return td;
+          }
+        }
+
+        const input = document.createElement("input");
+        input.className = "cell-input";
+        if (field === "email") { input.type = "email"; input.inputMode = "email"; input.autocomplete = "off"; }
+        input.value = team[field] != null ? String(team[field]) : "";
+        if (field === "sortOrder") {
+          input.type = "number"; input.min = "1";
+          input.style.width = "38px";
+          text.textContent = team[field] != null ? String(team[field]) : "—";
+          text.title = "Ordre au sein de la catégorie/genre — modifier pour forcer la position";
+        } else {
+          text.textContent = team[field] || "—";
+        }
+        td.appendChild(text);
+        td.appendChild(input);
+        td.dataset.field = field;
+        td.dataset.id = team.id;
+        return td;
+      }
+
+      let saveTimer = null;
+
+      function nextEditableFieldTd(allTds, i, dir) {
+        let j = i + dir;
+        while (j >= 0 && j < allTds.length) {
+          if (allTds[j].dataset.noedit !== "1") return allTds[j];
+          j += dir;
+        }
+        return null;
+      }
+
+      function closeAllActiveCells() {
+        document.querySelectorAll(".sheet td.active").forEach((el) => {
+          commitCell(el);
+          el.classList.remove("active");
+        });
+      }
+
+      function commitCell(td) {
+        const id    = td.dataset.id;
+        const field = td.dataset.field;
+        const input = td.querySelector(".cell-input");
+        const sel   = td.querySelector(".cell-select");
+        const newVal = sel ? sel.value : (input ? input.value.trim() : "");
+
+        const state = HyroxStore.loadState();
+        const idx   = state.teams.findIndex((t) => t.id === id);
+        if (idx < 0) return;
+
+        const prev = String(state.teams[idx][field] ?? "");
+        const formatted =
+          field === "lastName"   ? newVal.toUpperCase() :
+          field === "firstName"  ? newVal.charAt(0).toUpperCase() + newVal.slice(1).toLowerCase() :
+          field === "partnerLastName" ? newVal.toUpperCase() :
+          field === "partnerFirstName" ? (newVal ? newVal.charAt(0).toUpperCase() + newVal.slice(1).toLowerCase() : "") :
+          field === "email"      ? newVal.trim().toLowerCase() :
+          newVal;
+        const next = field === "sortOrder" ? (Number(newVal) || 1) : formatted;
+        if (String(prev) === String(next)) return;
+
+        state.teams[idx][field] = next;
+        if (field === "teamFormat" || field === "category" || field === "gender") {
+          const t = state.teams[idx];
+          if (t.teamFormat === "Mixte") {
+            t.category = "Open";
+            t.gender = "";
+          } else if (t.teamFormat && t.teamFormat !== "Solo") {
+            t.gender = "";
+          } else if (t.teamFormat === "Solo" && t.gender === "Mixte") {
+            t.teamFormat = "Mixte";
+            t.gender = "";
+            t.category = "Open";
+          }
+          if (t.teamFormat === "Solo") {
+            t.partnerLastName = "";
+            t.partnerFirstName = "";
+          }
+        }
+        if (field === "lastName" || field === "firstName" || field === "partnerLastName" || field === "partnerFirstName") {
+          state.teams[idx].name = HyroxStore.formatTeamDisplayName(state.teams[idx]);
+        }
+        HyroxStore.saveState(state);
+        sheetStatus.textContent = "Sauvegardé.";
+
+        const textEl = td.querySelector(".cell-text");
+        if (textEl) textEl.textContent = String(next) || "—";
+        if (input) input.value = String(next);
+
+        // Re-rendre si l'ordre change (les lignes se déplacent)
+        if (field === "sortOrder" || field === "category" || field === "gender" || field === "teamFormat" || field === "partnerLastName" || field === "partnerFirstName") {
+          render();
+        }
+      }
+
+      function activateCell(td) {
+        if (td.dataset.noedit === "1") return;
+        document.querySelectorAll(".sheet td.active").forEach((el) => {
+          if (el !== td) {
+            commitCell(el);
+            el.classList.remove("active");
+          }
+        });
+        td.classList.add("active");
+        const input = td.querySelector(".cell-input");
+        const sel   = td.querySelector(".cell-select");
+        if (input) { input.focus(); input.select(); }
+        else if (sel) sel.focus();
+      }
+
+      // ── Drag & drop ─────────────────────────────────────────────────────────
+      let dragSrcId  = null;
+      let dragGroup  = null; // "category|gender" du draggé
+
+      function groupKey(team) {
+        return HyroxStore.rankGroupKey(team);
+      }
+
+      function applyDrop(targetId) {
+        if (!dragSrcId || dragSrcId === targetId) return;
+        const state = HyroxStore.loadState();
+        const sorted = [...state.teams].sort(HyroxStore.compareAthletes);
+        const srcIdx = sorted.findIndex((t) => t.id === dragSrcId);
+        const tgtIdx = sorted.findIndex((t) => t.id === targetId);
+        if (srcIdx < 0 || tgtIdx < 0) return;
+        // Vérifier même groupe
+        if (groupKey(sorted[srcIdx]) !== groupKey(sorted[tgtIdx])) return;
+
+        // Déplacer dans le tableau trié
+        const [moved] = sorted.splice(srcIdx, 1);
+        sorted.splice(tgtIdx, 0, moved);
+
+        // Réattribuer sortOrder pour tous les membres du groupe, dans leur nouvel ordre
+        const gk = groupKey(moved);
+        let counter = 1;
+        sorted.forEach((t) => {
+          if (groupKey(t) === gk) {
+            const orig = state.teams.find((s) => s.id === t.id);
+            if (orig) orig.sortOrder = counter++;
+          }
+        });
+
+        HyroxStore.saveState(state);
+        sheetStatus.textContent = "Ordre mis à jour.";
+        render();
+      }
+
+      function render() {
+        const state    = HyroxStore.loadState();
+        const schedule = HyroxStore.buildHeatSchedule(state);
+        const heatMap    = {};
+        const heatNumMap = {};
+        schedule.forEach((h) => h.athletes.forEach((a) => {
+          heatMap[a.id]    = h.startTime;
+          heatNumMap[a.id] = h.heat;
+        }));
+        sheetBody.innerHTML = "";
+
+        const sorted = [...state.teams].sort(HyroxStore.compareAthletes);
+
+        sorted.forEach((team) => {
+          const tr = document.createElement("tr");
+          tr.dataset.id    = team.id;
+          tr.dataset.group = groupKey(team);
+          tr.draggable     = true;
+
+          // ── Poignée drag ────────────────────────────────────────────────────
+          const tdHandle = document.createElement("td");
+          tdHandle.className   = "col-drag";
+          tdHandle.innerHTML   = `<span class="drag-handle" title="Glisser pour réordonner (même catégorie/genre)">⠿</span>`;
+          tdHandle.addEventListener("mousedown", () => { tr.draggable = true; });
+          tr.appendChild(tdHandle);
+
+          // ── Cellules éditables ───────────────────────────────────────────────
+          COLS.forEach((field) => {
+            const td = makeCell(team, field);
+            td.addEventListener("click", (e) => {
+              if (td.dataset.noedit === "1") {
+                e.stopPropagation();
+                closeAllActiveCells();
+                return;
+              }
+              activateCell(td);
+            });
+
+            const input = td.querySelector(".cell-input");
+            const sel   = td.querySelector(".cell-select");
+
+            if (input) {
+              input.addEventListener("blur", () => { commitCell(td); td.classList.remove("active"); });
+              input.addEventListener("keydown", (e) => {
+                if (e.key === "Tab") {
+                  e.preventDefault();
+                  commitCell(td);
+                  td.classList.remove("active");
+                  const allTds = [...tr.querySelectorAll("td[data-field]")];
+                  const i = allTds.indexOf(td);
+                  const next = nextEditableFieldTd(allTds, i, e.shiftKey ? -1 : 1);
+                  if (next) activateCell(next);
+                  return;
+                }
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitCell(td);
+                  td.classList.remove("active");
+                }
+                if (e.key === "Escape") td.classList.remove("active");
+              });
+            }
+            if (sel) {
+              sel.addEventListener("change", () => { commitCell(td); td.classList.remove("active"); render(); });
+              sel.addEventListener("blur",   () => { commitCell(td); td.classList.remove("active"); });
+              sel.addEventListener("keydown", (e) => {
+                if (e.key === "Tab") {
+                  e.preventDefault();
+                  commitCell(td);
+                  td.classList.remove("active");
+                  const allTds = [...tr.querySelectorAll("td[data-field]")];
+                  const i = allTds.indexOf(td);
+                  const next = nextEditableFieldTd(allTds, i, e.shiftKey ? -1 : 1);
+                  if (next) activateCell(next);
+                }
+              });
+            }
+            tr.appendChild(td);
+          });
+
+          // ── Heat (readonly) ──────────────────────────────────────────────────
+          const tdHeat = document.createElement("td");
+          tdHeat.innerHTML = `<span class="cell-text" style="color:var(--gold);font-weight:600">H${heatNumMap[team.id] || "?"}</span>`;
+          tr.appendChild(tdHeat);
+
+          // ── Heure départ (readonly) ──────────────────────────────────────────
+          const tdDep = document.createElement("td");
+          tdDep.innerHTML = `<span class="cell-text" style="color:var(--muted)">${heatMap[team.id] || "—"}</span>`;
+          tr.appendChild(tdDep);
+
+          // ── Suppression ─────────────────────────────────────────────────────
+          const tdDel = document.createElement("td");
+          tdDel.className = "col-del";
+          const btnDel = document.createElement("button");
+          btnDel.textContent = "✕";
+          btnDel.title = "Supprimer";
+          btnDel.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (!confirm(`Supprimer ${HyroxStore.formatTeamDisplayName(team)} ?`)) return;
+            const st = HyroxStore.loadState();
+            st.teams  = st.teams.filter((t) => t.id !== team.id);
+            st.scores = st.scores.filter((s) => s.teamId !== team.id);
+            HyroxStore.saveState(st);
+            render();
+          });
+          tdDel.appendChild(btnDel);
+          tr.appendChild(tdDel);
+
+          // ── Événements drag ─────────────────────────────────────────────────
+          tr.addEventListener("dragstart", (e) => {
+            dragSrcId = team.id;
+            dragGroup = groupKey(team);
+            tr.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+          });
+          tr.addEventListener("dragend", () => {
+            dragSrcId = null;
+            dragGroup = null;
+            document.querySelectorAll("tr.drag-over").forEach((r) => r.classList.remove("drag-over"));
+            tr.classList.remove("dragging");
+          });
+          tr.addEventListener("dragover", (e) => {
+            if (dragGroup && tr.dataset.group === dragGroup) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              document.querySelectorAll("tr.drag-over").forEach((r) => r.classList.remove("drag-over"));
+              tr.classList.add("drag-over");
+            }
+          });
+          tr.addEventListener("dragleave", () => tr.classList.remove("drag-over"));
+          tr.addEventListener("drop", (e) => {
+            e.preventDefault();
+            tr.classList.remove("drag-over");
+            applyDrop(team.id);
+          });
+
+          sheetBody.appendChild(tr);
+        });
+      }
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const state   = HyroxStore.loadState();
+        const rawLast  = lastName.value.trim();
+        const rawFirst = firstName.value.trim();
+        const payload = HyroxStore.normalizeTeamPayload({
+          firstName: rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1).toLowerCase(),
+          lastName:  rawLast.toUpperCase(),
+          partnerLastName: pLastName.value.trim(),
+          partnerFirstName: pFirstName.value.trim(),
+          email:     teamEmail.value.trim().toLowerCase(),
+          category:  category.value,
+          teamFormat: teamFormatSel.value,
+          gender:    gender.value,
+          club:      teamClub.value.trim(),
+        }, state);
+        state.teams.push(payload);
+        HyroxStore.saveState(state);
+        form.reset();
+        teamFormatSel.value = "Solo";
+        category.value = "Open";
+        category.disabled = false;
+        gender.value = "";
+        syncAddForm();
+        render();
+      });
+
+      // Fermer la cellule active si on clique hors du tableau
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest("table.sheet")) {
+          document.querySelectorAll(".sheet td.active").forEach((td) => {
+            commitCell(td);
+            td.classList.remove("active");
+          });
+        }
+      });
+
+      // ── Auth ──────────────────────────────────────────────────
+      HyroxAuth.requireAuth({ onSuccess: () => {
+        injectLogoutBtn();
+        syncAddForm();
+        HyroxStore.whenCloudReady()
+          .then(() => render())
+          .catch((err) => alert(`Cloud indisponible: ${err.message || err}`));
+      }});
+    </script>
+  </body>
+</html>

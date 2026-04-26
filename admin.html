@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hyrox Epicure — Administration</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <link rel="stylesheet" href="./assets/css/styles.css" />
+    <link rel="stylesheet" href="./assets/css/admin-bootstrap.css" />
+    <link rel="stylesheet" href="./assets/css/auth.css" />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-md navbar-dark border-bottom border-secondary admin-navbar">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="./index.html" title="Accueil public"><span class="fw-bold">HYROX</span> <span class="text-secondary" style="font-size:0.88rem">· Epicure</span></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNav" aria-controls="adminNav" aria-expanded="false" aria-label="Menu">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="adminNav">
+          <ul class="navbar-nav ms-md-auto flex-wrap py-2 py-md-0">
+            <li class="nav-item"><a class="nav-link" href="./portail.html">Espace athlètes</a></li>
+            <li class="nav-item"><a class="nav-link active" href="./admin.html">Paramètres</a></li>
+            <li class="nav-item"><a class="nav-link" href="./tv.html" target="_blank" rel="noopener noreferrer">📺 TV</a></li>
+            <li class="nav-item"><a class="nav-link" href="./judge.html" target="_blank" rel="noopener noreferrer">⚡ Juge</a></li>
+            <li class="nav-item"><a class="nav-link" href="./equipes.html">Équipes</a></li>
+            <li class="nav-item"><a class="nav-link" href="./planning.html">Planning</a></li>
+            <li class="nav-item"><a class="nav-link" href="./epreuves.html">Épreuves</a></li>
+            <li class="nav-item"><a class="nav-link" href="./scores.html">Passages</a></li>
+            <li class="nav-item"><a class="nav-link" href="./classement.html">Classement</a></li>
+            <li class="nav-item"><a class="nav-link" href="./ops.html">Ops</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container-fluid px-2 px-sm-3 py-3 py-md-4">
+      <div class="row g-3">
+        <div class="col-12 col-lg-4">
+      <section class="card">
+        <h2>Configuration rapide</h2>
+        <p class="muted">
+          Définis ici les infos principales de la compétition.
+        </p>
+        <form id="config-form">
+          <label>Nom de la compétition <input id="name" required /></label>
+          <label>Lieu <input id="location" /></label>
+          <label>Date <input id="date" type="date" /></label>
+          <label>Heure du 1er départ <input id="start-time" type="time" value="08:00" /></label>
+          <label>Échauffement (min avant chaque départ) <input id="warmup-minutes" type="number" min="0" value="30" title="S’applique au planning : heure d’arrivée / début d’échauffement avant le départ du heat" /></label>
+          <label>Durée estimée parcours (min) <input id="est-parcours" type="number" min="1" value="90" title="Fenêtre TV, planning fin de heat et ops si aucun créneau n’est défini après le départ" /></label>
+          <label>Intervalle départ (minutes) <input id="interval" type="number" min="1" value="20" /></label>
+          <label>Athlètes par heat <input id="athletes-per-heat" type="number" min="1" value="2" /></label>
+          <button class="primary" type="submit">Enregistrer</button>
+        </form>
+      </section>
+        </div>
+
+        <div class="col-12 col-lg-4">
+      <section class="card">
+        <h2>Compétition active</h2>
+        <p class="muted">Chaque compétition est isolée dans le cloud via son identifiant.</p>
+        <div class="row">
+          <label>
+            Sélectionner une compétition existante
+            <select id="competition-select"></select>
+          </label>
+          <button id="competition-refresh" type="button">Rafraîchir la liste</button>
+          <button id="competition-open-selected" type="button" class="primary">Ouvrir la sélection</button>
+        </div>
+        <form id="competition-form">
+          <label>ID compétition (slug) <input id="competition-ref" placeholder="ex: hyrox-epicure-2026" title="Le slug doit commencer par hyrox- pour apparaître dans la liste (base partagée avec d’autres apps)" /></label>
+          <div class="row">
+            <button class="primary" type="submit">Créer / ouvrir cette compétition</button>
+          </div>
+        </form>
+        <p id="competition-current" class="muted"></p>
+        <p id="competition-list-status" class="muted"></p>
+      </section>
+        </div>
+
+        <div class="col-12 col-lg-4">
+      <section class="card">
+        <h2>🔐 Sécurité — Mot de passe admin</h2>
+        <p class="muted">Protège la configuration et la saisie de scores.</p>
+        <form id="password-form">
+          <label>Nouveau mot de passe
+            <input type="password" id="new-password" placeholder="Min. 4 caractères" autocomplete="new-password" />
+          </label>
+          <label>Confirmer
+            <input type="password" id="confirm-password" placeholder="Répéter le mot de passe" autocomplete="new-password" />
+          </label>
+          <div class="row">
+            <button class="primary" type="submit">Changer le mot de passe</button>
+          </div>
+          <p id="password-status" class="muted" style="min-height:18px"></p>
+        </form>
+      </section>
+        </div>
+      </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="./assets/js/auth.js"></script>
+    <script src="./assets/js/data.js"></script>
+    <script>
+      const form = document.querySelector("#config-form");
+      const nameInput = document.querySelector("#name");
+      const locationInput = document.querySelector("#location");
+      const dateInput = document.querySelector("#date");
+      const startTimeInput = document.querySelector("#start-time");
+      const intervalInput = document.querySelector("#interval");
+      const warmupInput = document.querySelector("#warmup-minutes");
+      const estParcoursInput = document.querySelector("#est-parcours");
+      const perHeatInput = document.querySelector("#athletes-per-heat");
+      const competitionForm = document.querySelector("#competition-form");
+      const competitionRefInput = document.querySelector("#competition-ref");
+      const competitionCurrent = document.querySelector("#competition-current");
+      const competitionSelect = document.querySelector("#competition-select");
+      const competitionRefreshBtn = document.querySelector("#competition-refresh");
+      const competitionOpenSelectedBtn = document.querySelector("#competition-open-selected");
+      const competitionListStatus = document.querySelector("#competition-list-status");
+
+      function refresh() {
+        const state = HyroxStore.loadState();
+        nameInput.value = state.config.competitionName || "";
+        locationInput.value = state.config.location || "";
+        dateInput.value = state.config.date || "";
+        startTimeInput.value = state.config.startTime || "08:00";
+        intervalInput.value = Number(state.config.heatIntervalMinutes || 20);
+        warmupInput.value = Number(state.config.warmupMinutes != null ? state.config.warmupMinutes : 30);
+        if (estParcoursInput) {
+          estParcoursInput.value = Number(
+            state.config.estimatedParcoursMinutes != null ? state.config.estimatedParcoursMinutes : 90
+          );
+        }
+        perHeatInput.value = Number(state.config.athletesPerHeat || 2);
+        const activeRef = HyroxStore.getRemoteConfig().projectRef;
+        competitionRefInput.value = activeRef;
+        competitionCurrent.textContent = `Compétition active : ${activeRef}`;
+      }
+
+      function goToCompetition(ref) {
+        const safe = HyroxStore.sanitizeCompetitionRef(ref);
+        const target = HyroxStore.buildCompetitionUrl(safe, false);
+        window.location.href = target;
+      }
+
+      async function refreshCompetitionList() {
+        try {
+          competitionListStatus.textContent = "Chargement des compétitions...";
+          const items = await HyroxStore.listCompetitions();
+          const active = HyroxStore.getRemoteConfig().projectRef;
+          const allIds = Array.from(new Set([active, ...items.map((x) => x.id).filter(Boolean)]));
+          competitionSelect.innerHTML = allIds
+            .map((id) => {
+              const row = items.find((x) => x.id === id);
+              const dt = row?.updatedAt ? ` (maj ${new Date(row.updatedAt).toLocaleString()})` : "";
+              const selected = id === active ? "selected" : "";
+              return `<option value="${id}" ${selected}>${id}${dt}</option>`;
+            })
+            .join("");
+          competitionListStatus.textContent = `${allIds.length} compétition(s) disponible(s).`;
+        } catch (err) {
+          competitionListStatus.textContent = `Erreur liste compétitions: ${err.message || err}`;
+        }
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const state = HyroxStore.loadState();
+        state.config.competitionName = nameInput.value.trim();
+        state.config.location = locationInput.value.trim();
+        state.config.date = dateInput.value;
+        state.config.startTime = startTimeInput.value || "08:00";
+        state.config.heatIntervalMinutes = Number(intervalInput.value || 20);
+        state.config.warmupMinutes = Math.max(0, Number(warmupInput.value || 0));
+        state.config.estimatedParcoursMinutes = Math.max(
+          1,
+          Number((estParcoursInput && estParcoursInput.value) || 90)
+        );
+        state.config.athletesPerHeat = Number(perHeatInput.value || 2);
+        HyroxStore.saveState(state);
+        try {
+          await HyroxStore.pushRemote(state);
+        } catch (err) {
+          console.error("Erreur de sauvegarde cloud immédiate", err);
+          alert(`Configuration enregistrée localement en mémoire, mais échec cloud: ${err.message || err}`);
+        }
+        refresh();
+      });
+
+      competitionForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        goToCompetition(competitionRefInput.value);
+      });
+
+      competitionRefreshBtn.addEventListener("click", () => {
+        refreshCompetitionList();
+      });
+
+      competitionOpenSelectedBtn.addEventListener("click", () => {
+        if (!competitionSelect.value) return;
+        goToCompetition(competitionSelect.value);
+      });
+
+      async function bootstrapCloud() {
+        try {
+          await HyroxStore.whenCloudReady();
+        } catch (_) {}
+        refresh();
+        refreshCompetitionList();
+      }
+
+      document.querySelector("#password-form")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const np  = document.querySelector("#new-password").value;
+        const cp  = document.querySelector("#confirm-password").value;
+        const st  = document.querySelector("#password-status");
+        if (np !== cp) { st.style.color = "var(--danger)"; st.textContent = "Les mots de passe ne correspondent pas."; return; }
+        try {
+          await HyroxAuth.changePassword(np);
+          st.style.color = "var(--ok)";
+          st.textContent = "✓ Mot de passe mis à jour.";
+          document.querySelector("#new-password").value = "";
+          document.querySelector("#confirm-password").value = "";
+          setTimeout(() => { st.textContent = ""; }, 4000);
+        } catch (err) {
+          st.style.color = "var(--danger)";
+          st.textContent = err.message;
+        }
+      });
+
+      HyroxAuth.requireAuth({ onSuccess: () => {
+        bootstrapCloud();
+        injectLogoutBtn();
+      }});
+    </script>
+  </body>
+</html>

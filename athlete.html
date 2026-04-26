@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hyrox Epicure — Résultats Athlète</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <link rel="stylesheet" href="./assets/css/styles.css" />
+    <link rel="stylesheet" href="./assets/css/admin-bootstrap.css" />
+    <style>
+      /* ── Page layout ───────────────────────────────────────────── */
+      body { min-height: 100vh; }
+
+      #hero {
+        text-align: center;
+        padding: 48px 24px 32px;
+      }
+      .hero-logo {
+        font-size: 13px; font-family: var(--mono);
+        letter-spacing: .2em; color: var(--muted);
+        text-transform: uppercase; margin-bottom: 10px;
+      }
+      .hero-title {
+        font-size: clamp(24px, 5vw, 42px);
+        font-weight: 900; letter-spacing: .05em;
+        color: var(--text); margin-bottom: 6px;
+      }
+      .hero-sub { font-size: 14px; color: var(--muted); margin-bottom: 32px; }
+
+      /* ── Search box ─────────────────────────────────────────────── */
+      #search-wrap {
+        position: relative;
+        max-width: 540px;
+        margin: 0 auto 14px;
+      }
+      #search-input {
+        width: 100%;
+        padding: 16px 52px 16px 18px;
+        font-size: 18px;
+        background: var(--surface);
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        color: var(--text);
+        transition: border-color .2s, box-shadow .2s;
+      }
+      #search-input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px rgba(198,255,0,.12);
+      }
+      #search-icon {
+        position: absolute; right: 18px; top: 50%;
+        transform: translateY(-50%);
+        font-size: 20px; color: var(--muted); pointer-events: none;
+      }
+
+      /* Autocomplete dropdown */
+      #autocomplete {
+        position: absolute; left: 0; right: 0; top: 100%;
+        margin-top: 4px;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 10px; z-index: 100;
+        max-height: 280px; overflow-y: auto;
+        box-shadow: 0 8px 32px rgba(0,0,0,.4);
+        display: none;
+      }
+      #autocomplete.open { display: block; }
+      .ac-item {
+        padding: 10px 16px;
+        cursor: pointer;
+        display: flex; align-items: center; gap: 10px;
+        font-size: 14px;
+        transition: background .1s;
+        border-bottom: 1px solid var(--border);
+      }
+      .ac-item:last-child { border-bottom: none; }
+      .ac-item:hover, .ac-item.focused { background: rgba(255,255,255,.05); }
+      .ac-name { font-weight: 700; color: var(--text); flex: 1; }
+      .ac-meta { font-size: 11px; font-family: var(--mono); color: var(--muted); }
+      .ac-comp { font-size: 11px; color: var(--accent); font-family: var(--mono); }
+      .ac-empty { padding: 14px 16px; color: var(--muted); font-size: 13px; text-align: center; }
+
+      #search-status { font-size: 12px; font-family: var(--mono); color: var(--muted); text-align: center; }
+
+      /* ── Results area ───────────────────────────────────────────── */
+      #results { max-width: 860px; margin: 0 auto; padding: 0 16px 60px; }
+
+      /* ── Athlete card ───────────────────────────────────────────── */
+      .ath-card {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 16px; overflow: hidden;
+        margin-bottom: 28px;
+        animation: fadeUp .3s ease;
+      }
+      /* fadeIn → utilise @keyframes fadeUp de styles.css */
+
+      .ath-card-head {
+        padding: 20px 24px;
+        background: rgba(255,255,255,.03);
+        border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      }
+      .ath-avatar {
+        width: 52px; height: 52px; border-radius: 50%;
+        background: var(--accent); color: #0A0A0A;
+        font-weight: 900; font-size: 20px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0; letter-spacing: .04em;
+      }
+      .ath-name-block { flex: 1; }
+      .ath-last  { font-size: 24px; font-weight: 900; color: var(--text); letter-spacing: .05em; line-height: 1; }
+      .ath-first { font-size: 15px; color: var(--text); margin-top: 2px; font-weight: 600; }
+      .ath-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      /* badges → utilise .cat-badge .cat-* depuis styles.css */
+      .badge {
+        font-family: var(--mono); font-size: 11px;
+        padding: 3px 9px; border-radius: 20px; border: 1px solid transparent;
+      }
+      .badge-Open  { background: rgba(198,255,0,.12);   color: var(--accent); border-color: rgba(198,255,0,.3); }
+      .badge-Pro   { background: rgba(248,113,113,.15); color: #F87171;  border-color: rgba(248,113,113,.3); }
+      .badge-Femme { background: rgba(244,114,182,.1);  color: #F472B6;  border-color: rgba(244,114,182,.3); }
+      .badge-Homme { background: rgba(96,165,250,.1);   color: #60A5FA;  border-color: rgba(96,165,250,.3); }
+      .badge-comp  { background: rgba(198,255,0,.08);   color: var(--accent); border-color: rgba(198,255,0,.25); }
+
+      /* ── Competition block ──────────────────────────────────────── */
+      .comp-block { padding: 20px 24px; }
+      .comp-head {
+        display: flex; align-items: center; gap: 12px;
+        margin-bottom: 18px; flex-wrap: wrap;
+      }
+      .comp-name { font-size: 15px; font-weight: 700; color: var(--text); flex: 1; }
+      .comp-date { font-size: 12px; font-family: var(--mono); color: var(--muted); }
+
+      /* ── Rank podium ────────────────────────────────────────────── */
+      .rank-podium {
+        display: flex; align-items: center; gap: 14px;
+        padding: 14px 18px;
+        background: rgba(255,255,255,.03);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-bottom: 18px;
+      }
+      .rank-medal { font-size: 32px; line-height: 1; }
+      .rank-info { flex: 1; }
+      .rank-label { font-size: 11px; font-family: var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+      .rank-num { font-size: 38px; font-weight: 900; line-height: 1; }
+      .rank-num.r1 { color: #FFD700; }
+      .rank-num.r2 { color: #C0C0C0; }
+      .rank-num.r3 { color: #CD7F32; }
+      .rank-num.rN { color: var(--accent); }
+      .rank-total { font-size: 12px; font-family: var(--mono); color: var(--muted); margin-top: 2px; }
+      .rank-heat  { font-family: var(--mono); font-size: 13px; color: var(--accent); font-weight: 700; }
+
+      /* ── Scores par épreuve ────────────────────────────────────── */
+      .zone-scores { display: flex; flex-direction: column; gap: 10px; }
+      .zone-row {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 16px;
+        background: rgba(255,255,255,.02);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        transition: border-color .2s;
+      }
+      .zone-row:hover { border-color: rgba(255,255,255,.1); }
+      .zone-icon { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
+      .zone-name { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; min-width: 120px; }
+      .zone-score-val {
+        font-family: var(--mono); font-size: 15px; font-weight: 700;
+        color: var(--text); min-width: 100px; text-align: right;
+      }
+      .zone-score-val.dnf { color: #F87171; }
+      .zone-rank {
+        font-family: var(--mono); font-size: 12px; font-weight: 700;
+        min-width: 48px; text-align: center;
+        padding: 3px 8px; border-radius: 20px;
+        border: 1px solid rgba(255,255,255,.08);
+        color: var(--muted);
+      }
+      .zone-rank.best  { background: rgba(198,255,0,.12); border-color: rgba(198,255,0,.3); color: var(--accent); }
+      .zone-rank.r1    { background: rgba(255,215,0,.12); border-color: rgba(255,215,0,.4);  color: #FFD700; }
+      .zone-rank.r2    { background: rgba(192,192,192,.1); border-color: rgba(192,192,192,.3); color: #C0C0C0; }
+      .zone-rank.r3    { background: rgba(205,127,50,.1); border-color: rgba(205,127,50,.3); color: #CD7F32; }
+      .zone-no-score   { font-size: 12px; color: var(--muted); font-style: italic; }
+
+      /* Sub-values (Strength) */
+      .zone-subvals {
+        font-size: 11px; font-family: var(--mono); color: var(--muted);
+        display: flex; gap: 8px; flex-wrap: wrap;
+      }
+
+      /* ── Progress bar (completions) ─────────────────────────────── */
+      .completion-bar {
+        display: flex; align-items: center; gap: 8px;
+        margin-top: 14px; font-size: 12px;
+        font-family: var(--mono); color: var(--muted);
+      }
+      .completion-dots { display: flex; gap: 5px; }
+      .completion-dot  {
+        width: 10px; height: 10px; border-radius: 50%;
+        background: rgba(255,255,255,.12);
+      }
+      .completion-dot.done { background: var(--accent); }
+
+      /* ── No result / Loader → utilise .empty-state, .spinner de styles.css ── */
+      .empty-state { padding: 60px 24px; font-size: 14px; }
+      .empty-icon  { font-size: 48px; margin-bottom: 12px; }
+
+      .loader {
+        text-align: center; padding: 40px;
+        font-family: var(--mono); font-size: 13px; color: var(--muted);
+      }
+      .loader .spinner { width: 24px; height: 24px; border-width: 3px; margin-right: 10px; }
+    </style>
+  </head>
+  <body>
+    <div id="hero">
+      <div class="hero-logo">Hyrox Epicure · Résultats</div>
+      <div class="hero-title">🏅 Trouve tes résultats</div>
+      <div class="hero-sub">Recherche ton nom parmi toutes les compétitions</div>
+
+      <div id="search-wrap">
+        <input type="text" id="search-input" placeholder="Nom ou prénom…" autocomplete="off" spellcheck="false" />
+        <span id="search-icon">🔍</span>
+        <div id="autocomplete"></div>
+      </div>
+      <div id="search-status">Chargement des données…</div>
+    </div>
+
+    <div id="results"></div>
+
+    <script src="./assets/js/data.js"></script>
+    <script>
+    // ══════════════════════════════════════════════════════════
+    //  CONSTANTES
+    // ══════════════════════════════════════════════════════════
+    const SUPABASE_URL  = "https://exxbcrbafrzkhcvwkffg.supabase.co";
+    const SUPABASE_KEY  = "sb_publishable_TiwXEH-JopQejQ0I04r9MQ_ieo5y9Ko";
+    const TIMECAP_OFF   = 100000;
+
+    const ZONE_META = {
+      ev_warmup:   { icon:"🔥", color:"#F97316" },
+    };
+
+    const MEDALS = ["🥇","🥇","🥈","🥉"];
+
+    // ══════════════════════════════════════════════════════════
+    //  FETCH TOUTES LES COMPÉTITIONS
+    // ══════════════════════════════════════════════════════════
+    let allCompStates = []; // [{ id, state, updatedAt }]
+    let athleteIndex  = []; // [{ key, lastName, firstName, category, gender, compId, compName, compDate, teamId }]
+
+    async function supaFetch(path) {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+      });
+      if (!res.ok) throw new Error(`Supabase ${res.status}: ${await res.text()}`);
+      return res.json();
+    }
+
+    async function loadAllCompetitions() {
+      // 1. Lister les compétitions (slugs gérés par l’appli, préfixe hyrox-)
+      const comps = await supaFetch("competition_states?select=id,updated_at&order=updated_at.desc&limit=200");
+      const hyroxComps = (comps || []).filter((c) => HyroxStore.isHyroxCompetitionId(c.id));
+      if (!hyroxComps.length) return;
+
+      // 2. Charger tous les états en parallèle
+      const results = await Promise.allSettled(
+        hyroxComps.map(c =>
+          supaFetch(`competition_states?id=eq.${encodeURIComponent(c.id)}&select=state,updated_at&limit=1`)
+            .then(rows => ({ id: c.id, state: rows[0]?.state||null, updatedAt: rows[0]?.updated_at||null }))
+        )
+      );
+
+      allCompStates = results
+        .filter(r => r.status === "fulfilled" && r.value.state)
+        .map(r => r.value);
+
+      // 3. Construire l'index des athlètes
+      athleteIndex = [];
+      allCompStates.forEach(({ id: compId, state, updatedAt }) => {
+        const compName = state.config?.competitionName || compId;
+        const compDate = state.config?.date || "";
+        (state.teams || []).forEach(team => {
+          const last  = (team.lastName  || "").toUpperCase();
+          const first = team.firstName  || "";
+          const key   = `${last} ${first}`.trim();
+          if (!key) return;
+          const searchBlob = `${key} ${(team.partnerLastName || "").toUpperCase()} ${(team.partnerFirstName || "")}`.trim();
+          athleteIndex.push({
+            key, searchBlob, last, first,
+            partnerLastName: team.partnerLastName,
+            partnerFirstName: team.partnerFirstName,
+            category: team.category || "—",
+            teamFormat: team.teamFormat,
+            gender:   team.gender   || "",
+            compId, compName, compDate, updatedAt,
+            teamId: team.id,
+          });
+        });
+      });
+
+      const total = athleteIndex.length;
+      const compsCount = allCompStates.length;
+      document.getElementById("search-status").textContent =
+        `${total} athlète${total>1?"s":""} dans ${compsCount} compétition${compsCount>1?"s":""}`;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  SEARCH & AUTOCOMPLETE
+    // ══════════════════════════════════════════════════════════
+    const searchInput  = document.getElementById("search-input");
+    const acBox        = document.getElementById("autocomplete");
+    let acFocusIdx     = -1;
+
+    function normalize(s) { return s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu,""); }
+
+    function searchAthletes(query) {
+      if (!query || query.length < 2) return [];
+      const q = normalize(query);
+      // Dédupe par nom unique (last|first) — un seul résultat par athlète
+      const seen = new Set();
+      return athleteIndex.filter(a => {
+        const nameKey = `${normalize(a.last)}|${normalize(a.first)}`;
+        if (seen.has(nameKey)) return false;
+        const match = normalize(a.searchBlob || a.key).includes(q);
+        if (match) seen.add(nameKey);
+        return match;
+      }).slice(0, 20);
+    }
+
+    function renderAC(items) {
+      acFocusIdx = -1;
+      if (!items.length) {
+        acBox.innerHTML = `<div class="ac-empty">Aucun athlète trouvé</div>`;
+        acBox.classList.add("open");
+        return;
+      }
+      acBox.innerHTML = items.map((a, i) => `
+        <div class="ac-item" data-idx="${i}" tabindex="-1">
+          <div>
+            <div class="ac-name">${HyroxStore.formatTeamDisplayName(a)}</div>
+            <div class="ac-meta">${HyroxStore.formatTeamDivisionLine(a)}</div>
+          </div>
+        </div>`).join("");
+      acBox.classList.add("open");
+
+      acBox.querySelectorAll(".ac-item").forEach((el, i) => {
+        el.addEventListener("mousedown", (e) => { e.preventDefault(); pickAthlete(items[i]); });
+      });
+    }
+
+    function pickAthlete(entry) {
+      searchInput.value = `${entry.last} ${entry.first}`;
+      acBox.classList.remove("open");
+      showAthleteResults(entry.last, entry.first);
+    }
+
+    searchInput.addEventListener("input", () => {
+      const q = searchInput.value.trim();
+      if (q.length < 2) { acBox.classList.remove("open"); return; }
+      renderAC(searchAthletes(q));
+    });
+
+    searchInput.addEventListener("keydown", (e) => {
+      const items = acBox.querySelectorAll(".ac-item");
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        acFocusIdx = Math.min(acFocusIdx+1, items.length-1);
+        items.forEach((el,i)=>el.classList.toggle("focused",i===acFocusIdx));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        acFocusIdx = Math.max(acFocusIdx-1, 0);
+        items.forEach((el,i)=>el.classList.toggle("focused",i===acFocusIdx));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (acFocusIdx >= 0 && items[acFocusIdx]) {
+          items[acFocusIdx].dispatchEvent(new MouseEvent("mousedown",{bubbles:true}));
+        } else {
+          const q = searchInput.value.trim();
+          if (q.length >= 2) showAthleteResults(q);
+        }
+      } else if (e.key === "Escape") {
+        acBox.classList.remove("open");
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest("#search-wrap")) acBox.classList.remove("open");
+    });
+
+    // ══════════════════════════════════════════════════════════
+    //  AFFICHAGE DES RÉSULTATS
+    // ══════════════════════════════════════════════════════════
+    function fmtDate(d) {
+      if (!d) return "";
+      try { return new Date(d).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"}); }
+      catch { return d; }
+    }
+
+    function fmtScore(sc, ev) {
+      if (!sc) return null;
+      if (sc.dnf) return { text:"DNF", isDNF:true };
+      if (sc.timeCapped && ev.timeCap) {
+        return { text:`TC +${sc.reps||0} reps`, isDNF:false, isTC:true };
+      }
+      return { text: sc.performance || String(sc.rawValue || "—"), isDNF:false };
+    }
+
+    function rankClass(r) {
+      if (r===1) return "r1";
+      if (r===2) return "r2";
+      if (r===3) return "r3";
+      return "best";
+    }
+
+    function showAthleteResults(lastOrFull, firstArg) {
+      const resultsEl = document.getElementById("results");
+      resultsEl.innerHTML = "";
+
+      // Trouver toutes les entrées correspondant à cet athlète
+      let matches;
+      if (firstArg !== undefined) {
+        const normLast  = normalize(lastOrFull);
+        const normFirst = normalize(firstArg);
+        matches = athleteIndex.filter(a =>
+          normalize(a.last)===normLast && normalize(a.first)===normFirst
+        );
+      } else {
+        const q = normalize(lastOrFull);
+        matches = athleteIndex.filter(a => normalize(a.key).includes(q));
+      }
+
+      // Dédupe par compId+teamId
+      const seen = new Set();
+      matches = matches.filter(a => {
+        const k = `${a.compId}:${a.teamId}`;
+        if (seen.has(k)) return false;
+        seen.add(k); return true;
+      });
+
+      // Grouper par (last, first) pour fusionner plusieurs compétitions
+      const byAthlete = {};
+      matches.forEach(a => {
+        const k = `${a.last}|${a.first}`;
+        if (!byAthlete[k]) byAthlete[k] = [];
+        byAthlete[k].push(a);
+      });
+
+      if (!Object.keys(byAthlete).length) {
+        resultsEl.innerHTML = `<div class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <div class="empty-title">Aucun résultat</div>
+          <div>Aucun athlète correspondant n'a été trouvé.</div>
+        </div>`;
+        return;
+      }
+
+      Object.values(byAthlete).forEach(entries => {
+        const initials = (entries[0].last[0]||"") + (entries[0].first[0]||"");
+        const cardEl = document.createElement("div");
+        cardEl.className = "ath-card";
+
+        // ── En-tête de la carte ──
+        const head = document.createElement("div");
+        head.className = "ath-card-head";
+        const b0 = entries[0];
+        const bEff = HyroxStore.effectiveCategory(b0);
+        const bLine = HyroxStore.formatTeamDivisionLine(b0);
+        head.innerHTML = `
+          <div class="ath-avatar">${initials.toUpperCase()}</div>
+          <div class="ath-name-block">
+            <div class="ath-last">${b0.last}</div>
+            <div class="ath-first">${b0.first}</div>
+          </div>
+          <div class="ath-badges">
+            <span class="badge badge-${bEff}">${bLine}</span>
+          </div>`;
+        cardEl.appendChild(head);
+
+        // ── Une section par compétition ──
+        entries.sort((a,b)=>(b.compDate||"").localeCompare(a.compDate||"")).forEach(entry => {
+          const compState = allCompStates.find(c=>c.id===entry.compId);
+          if (!compState) return;
+          const state = compState.state;
+          const team  = (state.teams||[]).find(t=>t.id===entry.teamId);
+          if (!team) return;
+
+          const ranking     = HyroxStore.getRanking(state);
+          const myRanking   = ranking.find(r=>r.teamId===entry.teamId);
+          const scoredEvents= (state.events||[]).filter(e=>e.scored).sort((a,b)=>a.order-b.order);
+
+          const gk0 = HyroxStore.rankGroupKey(team);
+          const groupRanking = ranking.filter(r=>
+            HyroxStore.rankGroupKey(r.team) === gk0 && r.scoredCount>0
+          );
+          let groupRank = null;
+          if (myRanking && myRanking.scoredCount > 0) {
+            groupRank = groupRanking.findIndex(r=>r.teamId===entry.teamId) + 1;
+          }
+
+          // Trouver le heat de l'athlète
+          const schedule  = HyroxStore.buildHeatSchedule(state);
+          const heatEntry = schedule.find(h=>h.athletes.some(a=>a.id===entry.teamId));
+          const heatNum   = heatEntry ? `H${heatEntry.heat}` : "";
+
+          const section = document.createElement("div");
+          section.className = "comp-block";
+
+          // Nombre d’épreuves scorées avec un score réel
+          const scoredCount = myRanking?.scoredCount || 0;
+
+          // ── Build HTML ──
+          let rankHtml = "";
+          if (groupRank !== null) {
+            const medal = groupRank <= 3 ? MEDALS[groupRank] : "";
+            const rcls  = `rank-num ${rankClass(groupRank)}`;
+            rankHtml = `
+              <div class="rank-podium">
+                <div class="rank-medal">${medal||"🏅"}</div>
+                <div class="rank-info">
+                  <div class="rank-label">${HyroxStore.formatTeamDivisionLine(team)}</div>
+                  <div class="${rcls}">${groupRank}${ordinal(groupRank)}</div>
+                  <div class="rank-total">${scoredCount} épreuve${scoredCount>1?"s":""} scorée${scoredCount>1?"s":""} · total rangs : ${myRanking.total}</div>
+                </div>
+                ${heatNum ? `<div class="rank-heat">${heatNum}</div>` : ""}
+              </div>`;
+          } else {
+            rankHtml = `<div class="rank-podium">
+              <div class="rank-medal">⏳</div>
+              <div class="rank-info">
+                <div class="rank-label">${HyroxStore.formatTeamDivisionLine(team)}</div>
+                <div class="rank-num rN">—</div>
+                <div class="rank-total">Pas encore de score</div>
+              </div>
+              ${heatNum ? `<div class="rank-heat">${heatNum}</div>` : ""}
+            </div>`;
+          }
+
+          // Lignes par épreuve scorée
+          const zonesHtml = scoredEvents.map(ev => {
+            const sc   = (state.scores||[]).find(s=>s.teamId===entry.teamId && s.eventId===ev.id);
+            const meta = ZONE_META[ev.id] || { icon:"📋", color:"#888" };
+            const evRank = myRanking?.eventRanks?.find(r=>r.eventId===ev.id)?.rank ?? null;
+
+            if (!sc) {
+              return `<div class="zone-row">
+                <span class="zone-icon">${meta.icon}</span>
+                <span class="zone-name">${ev.name}</span>
+                <span class="zone-no-score">Pas de score</span>
+              </div>`;
+            }
+
+            const fmt    = fmtScore(sc, ev);
+            const rCls   = evRank ? rankClass(evRank) : "";
+            const rankLbl= evRank ? `#${evRank}` : "—";
+
+            let subLine = "";
+            if (fmt?.sub) {
+              subLine = `<div class="zone-subvals">${fmt.sub}</div>`;
+            }
+
+            return `<div class="zone-row" style="border-left:3px solid ${meta.color}40">
+              <span class="zone-icon">${meta.icon}</span>
+              <div style="flex:1">
+                <div class="zone-name">${ev.name}</div>
+                ${subLine}
+              </div>
+              <span class="zone-score-val ${fmt?.isDNF?"dnf":""}">${fmt?.text||"—"}</span>
+              <span class="zone-rank ${rCls}">${rankLbl}</span>
+            </div>`;
+          }).join("");
+
+          // Barre de complétion
+          const dots = scoredEvents.map(ev => {
+            const sc = (state.scores||[]).find(s=>s.teamId===entry.teamId && s.eventId===ev.id);
+            return `<span class="completion-dot ${sc&&!sc.dnf?"done":""}" title="${ev.name}"></span>`;
+          }).join("");
+
+          section.innerHTML = `
+            <div class="comp-head">
+              <span class="badge badge-comp">${entry.compId}</span>
+              <span class="comp-name">${entry.compName}</span>
+              ${entry.compDate ? `<span class="comp-date">${fmtDate(entry.compDate)}</span>` : ""}
+            </div>
+            ${rankHtml}
+            <div class="zone-scores">${zonesHtml}</div>
+            <div class="completion-bar">
+              <span>Progression :</span>
+              <span class="completion-dots">${dots}</span>
+              <span>${scoredCount} / ${scoredEvents.length} épreuve${scoredEvents.length>1?"s":""}</span>
+            </div>`;
+
+          cardEl.appendChild(section);
+        });
+
+        resultsEl.appendChild(cardEl);
+      });
+    }
+
+    function ordinal(n) {
+      if (n===1) return "er";
+      return "ème";
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  URL PARAM : ?q=DUPONT
+    // ══════════════════════════════════════════════════════════
+    function checkUrlQuery() {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get("q");
+      if (q) {
+        searchInput.value = decodeURIComponent(q);
+        showAthleteResults(q);
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  INIT
+    // ══════════════════════════════════════════════════════════
+    (async () => {
+      try {
+        await loadAllCompetitions();
+        checkUrlQuery();
+      } catch (err) {
+        document.getElementById("search-status").textContent = `Erreur : ${err.message}`;
+      }
+    })();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+  </body>
+</html>

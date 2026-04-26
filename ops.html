@@ -1,0 +1,955 @@
+﻿<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hyrox Epicure - Ops Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <link rel="stylesheet" href="./assets/css/styles.css" />
+    <link rel="stylesheet" href="./assets/css/admin-bootstrap.css" />
+    <link rel="stylesheet" href="./assets/css/auth.css" />
+    <style>
+      /* ── Layout ─────────────────────────────────────────────────── */
+      body { overflow-x: hidden; }
+      .ops-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 24px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .ops-clock {
+        font-family: var(--mono);
+        font-size: 38px;
+        font-weight: 500;
+        color: var(--accent);
+        letter-spacing: .05em;
+        line-height: 1;
+      }
+      .ops-status {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        align-items: flex-end;
+      }
+      .ops-body {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto;
+        gap: 14px;
+        padding: 14px;
+      }
+      @media (max-width: 900px) { .ops-body { grid-template-columns: 1fr; } }
+
+      /* ── Alert banner ───────────────────────────────────────────── */
+      #alert-banner {
+        grid-column: 1 / -1;
+        display: none;
+        background: rgba(245,166,35,.12);
+        border: 1px solid rgba(245,166,35,.45);
+        border-radius: 8px;
+        padding: 12px 18px;
+        font-family: var(--mono);
+        font-size: 13px;
+        color: #f5a623;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      #alert-banner.visible { display: flex; }
+      .alert-icon { font-size: 20px; }
+
+      /* ── Blocs par créneau (planning) ───────────────────────────── */
+      .zone-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        transition: border-color .3s;
+      }
+      .zone-card.state-active {
+        border-color: var(--accent);
+        box-shadow: 0 0 18px rgba(245,192,48,.12);
+      }
+      .zone-card.state-soon {
+        border-color: rgba(245,166,35,.55);
+      }
+      .zone-card.state-past { opacity: .45; }
+
+      .zone-card-header {
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(255,255,255,.03);
+      }
+      .zone-num-badge {
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 700;
+        width: 28px; height: 28px;
+        border-radius: 6px;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(0,0,0,.07);
+        color: var(--muted);
+        flex-shrink: 0;
+      }
+      .zone-card.state-active .zone-num-badge { background: var(--accent); color: #000; }
+      .zone-card.state-soon  .zone-num-badge  { background: rgba(245,166,35,.3); color: #f5a623; }
+
+      .zone-card-title { font-weight: 700; font-size: 14px; flex: 1; }
+      .zone-card-time  { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+      .zone-status-pill {
+        font-family: var(--mono);
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 20px;
+        letter-spacing: .04em;
+      }
+      .pill-active  { background: rgba(245,192,48,.2); color: var(--accent); border: 1px solid rgba(245,192,48,.4); animation: pill-pulse 1.8s ease-in-out infinite; }
+      .pill-soon    { background: rgba(245,166,35,.15); color: #f5a623; border: 1px solid rgba(245,166,35,.35); }
+      .pill-waiting { background: rgba(255,255,255,.06); color: var(--muted); border: 1px solid rgba(0,0,0,.08); }
+      .pill-done    { background: rgba(0,0,0,.04); color: var(--muted); border: 1px solid rgba(0,0,0,.06); }
+      @keyframes pill-pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+
+      .zone-card-body { padding: 10px 14px; }
+
+      /* ── Athlete chips ──────────────────────────────────────────── */
+      .athlete-list { display: flex; flex-direction: column; gap: 5px; }
+      .athlete-chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        background: rgba(0,0,0,.04);
+        font-size: 13px;
+        transition: background .2s;
+      }
+      .athlete-chip.chip-active  { background: rgba(245,192,48,.08); }
+      .athlete-chip.chip-soon    { background: rgba(245,166,35,.07); }
+      .athlete-chip.chip-call    { border: 1px solid rgba(245,166,35,.4); }
+
+      .chip-heat {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--accent);
+        width: 26px;
+        text-align: center;
+        flex-shrink: 0;
+      }
+      .chip-name  { font-weight: 600; flex: 1; }
+      .chip-cat {
+        font-family: var(--mono);
+        font-size: 10px;
+        padding: 1px 5px;
+        border-radius: 3px;
+        border: 1px solid rgba(0,0,0,.12);
+        flex-shrink: 0;
+      }
+      .chip-time  { font-family: var(--mono); font-size: 11px; color: var(--muted); flex-shrink: 0; }
+      .chip-countdown {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: #f5a623;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      .chip-in-progress { font-size: 10px; color: var(--accent); animation: blink-dot 1.4s infinite; }
+
+      .empty-slot { font-size: 12px; color: var(--muted); padding: 6px 4px; font-style: italic; }
+
+      /* ── Tabs (current / next) ──────────────────────────────────── */
+      .zone-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); }
+      .zone-tab {
+        padding: 6px 14px;
+        font-size: 11px;
+        font-family: var(--mono);
+        cursor: pointer;
+        color: var(--muted);
+        border: none;
+        background: none;
+        border-bottom: 2px solid transparent;
+        transition: color .15s, border-color .15s;
+        letter-spacing: .04em;
+      }
+      .zone-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+      .tab-panel { display: none; padding: 10px 14px; }
+      .tab-panel.active { display: block; }
+
+      /* ── Timeline mini ──────────────────────────────────────────── */
+      #timeline-section {
+        grid-column: 1 / -1;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 18px;
+      }
+      .timeline-title { font-size: 12px; font-family: var(--mono); color: var(--muted); margin-bottom: 10px; }
+      .timeline-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 11px; }
+      .tl-heat { width: 36px; font-family: var(--mono); font-weight: 700; color: var(--accent); flex-shrink: 0; }
+      .tl-bar { flex: 1; display: flex; height: 22px; border-radius: 4px; overflow: hidden; gap: 1px; }
+      .tl-seg {
+        display: flex; align-items: center; justify-content: center;
+        font-size: 9px; font-family: var(--mono);
+        overflow: hidden; white-space: nowrap; transition: all .3s;
+      }
+      .tl-seg-past     { background: rgba(0,0,0,.06); color: transparent; }
+      .tl-seg-active   { background: var(--accent); color: #000; font-weight: 700; animation: pill-pulse 1.8s infinite; }
+      .tl-seg-soon     { background: rgba(245,166,35,.35); color: #f5a623; }
+      .tl-seg-future   { background: rgba(0,0,0,.08); color: var(--muted); }
+      .tl-seg-scored   { outline: 1px solid rgba(245,192,48,.3); outline-offset: -1px; }
+      .tl-athletes { font-size: 11px; color: var(--muted); width: 180px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+      /* ── Bouton saisie rapide flottant ──────────────────────────── */
+      #quick-score-fab {
+        position: fixed; bottom: 28px; right: 28px; z-index: 200;
+        background: var(--accent); color: #0A0A0A;
+        border: none; border-radius: 50px;
+        padding: 14px 24px; font-size: 15px; font-weight: 800;
+        cursor: pointer; box-shadow: 0 4px 24px rgba(198,255,0,.35);
+        display: flex; align-items: center; gap: 8px;
+        transition: transform .15s, box-shadow .15s;
+      }
+      #quick-score-fab:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(198,255,0,.45); }
+
+      /* ── Modal saisie score ──────────────────────────────────────── */
+      #qs-overlay {
+        display: none; position: fixed; inset: 0; z-index: 500;
+        background: rgba(0,0,0,.75); backdrop-filter: blur(4px);
+        align-items: center; justify-content: center;
+      }
+      #qs-overlay.open { display: flex; }
+      #qs-modal {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 16px; padding: 28px 30px;
+        width: min(520px, 95vw); max-height: 90vh; overflow-y: auto;
+        box-shadow: 0 12px 60px rgba(0,0,0,.6);
+        position: relative;
+      }
+      .qs-close {
+        position: absolute; top: 14px; right: 16px;
+        background: rgba(255,255,255,.07); border: none; border-radius: 50%;
+        width: 32px; height: 32px; cursor: pointer; font-size: 18px;
+        color: var(--muted); display: flex; align-items: center; justify-content: center;
+      }
+      .qs-close:hover { background: rgba(255,255,255,.14); color: var(--text); }
+      .qs-title {
+        font-size: 18px; font-weight: 800; margin-bottom: 20px;
+        color: var(--text); letter-spacing: .03em;
+      }
+      .qs-field { margin-bottom: 16px; }
+      .qs-field label {
+        display: block; font-size: 11px; font-family: var(--mono);
+        color: var(--muted); text-transform: uppercase; letter-spacing: .07em;
+        margin-bottom: 6px;
+      }
+      .qs-field select, .qs-field input[type=text], .qs-field input[type=number] {
+        width: 100%; padding: 10px 12px; font-size: 14px;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 8px; color: var(--text);
+      }
+      .qs-field select:focus, .qs-field input:focus {
+        outline: none; border-color: var(--accent);
+      }
+      .qs-zone-banner {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 14px; border-radius: 8px; margin-bottom: 18px;
+        font-size: 15px; font-weight: 700;
+        background: rgba(255,255,255,.04); border: 1px solid var(--border);
+      }
+      .qs-zone-icon { font-size: 22px; }
+      .qs-inputs { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+      .qs-sub-row { display: flex; gap: 10px; align-items: flex-end; }
+      .qs-sub-row .qs-field { flex: 1; margin-bottom: 0; }
+      #qs-strength-total {
+        font-family: var(--mono); font-size: 22px; font-weight: 700;
+        color: var(--accent); text-align: center;
+        padding: 10px; background: rgba(198,255,0,.07);
+        border-radius: 8px; border: 1px solid rgba(198,255,0,.2);
+        margin-bottom: 16px;
+      }
+      .qs-metcon-toggle {
+        display: flex; gap: 0; margin-bottom: 14px;
+        border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+      }
+      .qs-metcon-btn {
+        flex: 1; padding: 9px 0; font-size: 13px; font-weight: 600;
+        border: none; background: transparent; color: var(--muted); cursor: pointer;
+        transition: background .15s, color .15s;
+      }
+      .qs-metcon-btn.active { background: var(--accent); color: #0A0A0A; }
+      .qs-dnf-row {
+        display: flex; align-items: center; gap: 12px;
+        margin-bottom: 18px; font-size: 14px; font-weight: 600;
+        color: var(--muted); cursor: pointer;
+      }
+      .qs-dnf-toggle { position:relative; display:inline-block; width:38px; height:22px; flex-shrink:0; }
+      .qs-dnf-toggle input { opacity:0; width:0; height:0; }
+      .qs-dnf-track {
+        position:absolute; inset:0; border-radius:22px;
+        background: var(--border); transition:.2s; cursor:pointer;
+      }
+      .qs-dnf-track::before {
+        content:''; position:absolute; width:16px; height:16px;
+        left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s;
+      }
+      .qs-dnf-toggle input:checked + .qs-dnf-track { background:#e74c3c; }
+      .qs-dnf-toggle input:checked + .qs-dnf-track::before { transform:translateX(16px); }
+      .qs-prev { font-size:11px; color:var(--muted); margin-bottom:14px; font-family:var(--mono); }
+      .qs-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-md navbar-dark border-bottom border-secondary admin-navbar">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="./index.html" title="Accueil public"><span class="fw-bold">HYROX</span> <span class="text-secondary" style="font-size:0.88rem">· Epicure</span></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNav" aria-controls="adminNav" aria-expanded="false" aria-label="Menu">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="adminNav">
+          <ul class="navbar-nav ms-md-auto flex-wrap py-2 py-md-0">
+            <li class="nav-item"><a class="nav-link" href="./portail.html">Espace athlètes</a></li>
+            <li class="nav-item"><a class="nav-link" href="./admin.html">Paramètres</a></li>
+            <li class="nav-item"><a class="nav-link" href="./tv.html" target="_blank" rel="noopener noreferrer">📺 TV</a></li>
+            <li class="nav-item"><a class="nav-link" href="./equipes.html">Équipes</a></li>
+            <li class="nav-item"><a class="nav-link" href="./planning.html">Planning</a></li>
+            <li class="nav-item"><a class="nav-link" href="./epreuves.html">Épreuves</a></li>
+            <li class="nav-item"><a class="nav-link" href="./scores.html">Passages</a></li>
+            <li class="nav-item"><a class="nav-link" href="./classement.html">Classement</a></li>
+            <li class="nav-item"><a class="nav-link active" href="./ops.html">Ops</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <!-- ── Header ops ───────────────────────────────────────────── -->
+    <div class="ops-header">
+      <div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:2px">
+          <span class="dot-live"></span>OPS DASHBOARD — TEMPS RÉEL
+        </div>
+        <div class="ops-clock" id="clock">--:--:--</div>
+      </div>
+      <div class="ops-status">
+        <span id="comp-name">—</span>
+        <span id="active-heat-label" style="color:var(--accent)"></span>
+      </div>
+    </div>
+
+    <div class="container-fluid px-2 px-sm-3 py-2">
+    <div class="ops-body" id="ops-body">
+      <!-- Alert banner -->
+      <div id="alert-banner">
+        <span class="alert-icon">⚡</span>
+        <span id="alert-text"></span>
+      </div>
+
+      <!-- Blocs par créneau (dynamique) -->
+      <!-- Timeline -->
+      <div id="timeline-section" style="display:none">
+        <div class="timeline-title">TIMELINE DES HEATS</div>
+        <div id="timeline-body"></div>
+      </div>
+    </div>
+    </div>
+
+        <script src="./assets/js/auth.js"></script>
+    <script src="./assets/js/data.js"></script>
+    <script>
+      const CALL_AHEAD_MIN = 10; // appeler les athlètes X min avant l’heure de départ du créneau
+      const SOON_MIN       = 5;  // "imminent" pour le bandeau d'alerte
+
+      let scheduleCache = [];
+      let zonesCache    = [];
+      let offsetsCache  = [];
+      let totalDuration = 0;
+
+      function parseHm(hm) {
+        const [h, m] = String(hm || "00:00").split(":").map(Number);
+        return (h || 0) * 60 + (m || 0);
+      }
+      function toHm(min) {
+        const h = Math.floor(Math.max(0, min) / 60) % 24;
+        const m = Math.floor(min) % 60;
+        return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+      }
+      function clockStr() {
+        const d = new Date();
+        return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
+      }
+      let _opsState = null;
+      function nowMin() {
+        return HyroxStore.effectiveNowMin(_opsState);
+      }
+      function fmtCountdown(diffMin) {
+        const abs = Math.abs(diffMin);
+        const m = Math.floor(abs);
+        const s = Math.round((abs - m)*60);
+        return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+      }
+      function athleteName(a) {
+        return HyroxStore.formatTeamDisplayName(a);
+      }
+
+      // ── Build data ───────────────────────────────────────────────
+      function buildData() {
+        const state  = HyroxStore.loadState();
+        _opsState    = state;
+        scheduleCache = HyroxStore.buildHeatSchedule(state);
+        zonesCache    = [...state.events].sort((a,b) => a.order - b.order);
+        offsetsCache  = [];
+        let cum = 0;
+        zonesCache.forEach((z) => { offsetsCache.push(cum); cum += (z.durationMinutes||0); });
+        totalDuration = cum;
+        if (totalDuration === 0) {
+          const est = Number(state.config && state.config.estimatedParcoursMinutes) > 0
+            ? Number(state.config.estimatedParcoursMinutes) : 90;
+          totalDuration = est;
+        }
+        document.querySelector("#comp-name").textContent = state.config.competitionName || "Hyrox Epicure";
+      }
+
+      // ── Blocs par créneau (cartes) ───────────────────────────────
+      function buildZoneCards() {
+        const opsBody = document.querySelector("#ops-body");
+        // Retirer les cartes existantes
+        document.querySelectorAll(".zone-card").forEach(el => el.remove());
+        const timelineSection = document.querySelector("#timeline-section");
+
+        zonesCache.forEach((zone, zi) => {
+          const card = document.createElement("div");
+          card.className = "zone-card";
+          card.id = `zcard-${zone.id}`;
+          card.dataset.zi = zi;
+
+          card.innerHTML = `
+            <div class="zone-card-header">
+              <div class="zone-num-badge" id="znb-${zone.id}">${zone.order}</div>
+              <div class="zone-card-title">${zone.name}</div>
+              <div class="zone-card-time">${zone.durationMinutes} min${zone.timeCapMinutes ? ` · cap ${zone.timeCapMinutes} min` : ""}</div>
+              <span class="zone-status-pill pill-waiting" id="zpill-${zone.id}">EN ATTENTE</span>
+            </div>
+            <div class="zone-tabs">
+              <button class="zone-tab active" data-tab="current-${zone.id}">En cours</button>
+              <button class="zone-tab" data-tab="next-${zone.id}">Prochain heat</button>
+              <button class="zone-tab" data-tab="call-${zone.id}">À appeler <span id="call-count-${zone.id}" style="color:var(--accent)"></span></button>
+            </div>
+            <div class="tab-panel active" id="current-${zone.id}">
+              <div class="athlete-list" id="alist-current-${zone.id}"></div>
+            </div>
+            <div class="tab-panel" id="next-${zone.id}">
+              <div class="athlete-list" id="alist-next-${zone.id}"></div>
+            </div>
+            <div class="tab-panel" id="call-${zone.id}">
+              <div class="athlete-list" id="alist-call-${zone.id}"></div>
+            </div>
+          `;
+
+          // Tab click
+          card.querySelectorAll(".zone-tab").forEach(btn => {
+            btn.addEventListener("click", () => {
+              card.querySelectorAll(".zone-tab").forEach(b => b.classList.remove("active"));
+              card.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+              btn.classList.add("active");
+              document.querySelector(`#${btn.dataset.tab}`)?.classList.add("active");
+            });
+          });
+
+          opsBody.insertBefore(card, timelineSection);
+        });
+
+        timelineSection.style.display = "";
+      }
+
+      // ── Chip HTML ────────────────────────────────────────────────
+      function chipHTML(athlete, heat, zoneStart, state, extraClass="") {
+        const now = nowMin();
+        const zEnd = zoneStart + (zonesCache[Number(heat.heatIdx ?? 0)]?.durationMinutes || 30);
+        const diff = zoneStart - now;
+        const name = athleteName(athlete);
+        const eff  = HyroxStore.effectiveCategory(athlete);
+        const divL = HyroxStore.formatTeamDivisionLine(athlete);
+
+        let timeInfo = `<span class="chip-time">${toHm(zoneStart)}</span>`;
+        if (now >= zoneStart && now < zoneStart + (zonesCache.find(z=>true)?.durationMinutes||30)) {
+          timeInfo = `<span class="chip-in-progress">● EN COURS</span>`;
+        } else if (diff > 0 && diff <= CALL_AHEAD_MIN) {
+          timeInfo = `<span class="chip-countdown">dans ${fmtCountdown(diff)}</span>`;
+        }
+
+        return `<div class="athlete-chip ${extraClass}">
+          <span class="chip-heat">H${heat.heat}</span>
+          <span class="chip-name">${name}</span>
+          <span class="chip-cat cat-${eff}">${divL}</span>
+          ${timeInfo}
+        </div>`;
+      }
+
+      // ── Tick (chaque seconde) ────────────────────────────────────
+      function tick() {
+        const now = nowMin();
+        document.querySelector("#clock").textContent = clockStr();
+
+        // Trouver heat actif global
+        let activeHeatLabel = "";
+        scheduleCache.forEach(heat => {
+          const hs = parseHm(heat.startTime);
+          const he = hs + totalDuration;
+          if (now >= hs && now < he) activeHeatLabel = `Heat ${heat.heat} en cours`;
+        });
+        document.querySelector("#active-heat-label").textContent = activeHeatLabel;
+
+        // Alertes imminentes
+        const alerts = [];
+
+        // ── Mettre à jour chaque carte créneau ────────────────────
+        zonesCache.forEach((zone, zi) => {
+          const card  = document.querySelector(`#zcard-${zone.id}`);
+          const pill  = document.querySelector(`#zpill-${zone.id}`);
+          if (!card || !pill) return;
+
+          const currentAthletes = [];
+          const nextAthletes    = [];
+          const callAthletes    = [];
+
+          let zoneState = "waiting"; // waiting | soon | active | past
+
+          scheduleCache.forEach((heat, hi) => {
+            const heatStart = parseHm(heat.startTime);
+            const zStart    = heatStart + offsetsCache[zi];
+            const zEnd      = zStart + (zone.durationMinutes || 0);
+            const diff      = zStart - now;
+
+            heat.athletes.forEach(athlete => {
+              const entry = { athlete, heat, zStart, zEnd, diff };
+              if (now >= zStart && now < zEnd) {
+                currentAthletes.push(entry);
+                if (zoneState !== "active") zoneState = "active";
+              } else if (diff > 0 && diff <= CALL_AHEAD_MIN) {
+                callAthletes.push(entry);
+                if (zoneState === "waiting" || zoneState === "soon") zoneState = "soon";
+              } else if (diff > 0 && diff <= 30) {
+                nextAthletes.push(entry);
+              }
+
+              if (diff > 0 && diff <= SOON_MIN) {
+                alerts.push({ zone, athlete, heat, diff, zStart });
+              }
+            });
+          });
+
+          // Vérifier si tout est terminé pour ce créneau
+          const allPast = scheduleCache.every(heat => {
+            const heatStart = parseHm(heat.startTime);
+            return now >= heatStart + offsetsCache[zi] + (zone.durationMinutes||0);
+          });
+          if (allPast && scheduleCache.length > 0) zoneState = "past";
+
+          // Appliquer classe card
+          card.classList.remove("state-active","state-soon","state-past","state-waiting");
+          card.classList.add(`state-${zoneState}`);
+
+          // Pill
+          pill.className = "zone-status-pill";
+          if (zoneState === "active") { pill.classList.add("pill-active"); pill.textContent = "EN COURS"; }
+          else if (zoneState === "soon") { pill.classList.add("pill-soon"); pill.textContent = "BIENTÔT"; }
+          else if (zoneState === "past") { pill.classList.add("pill-done"); pill.textContent = "TERMINÉ"; }
+          else { pill.classList.add("pill-waiting"); pill.textContent = "EN ATTENTE"; }
+
+          // Remplir les listes
+          const listCurrent = document.querySelector(`#alist-current-${zone.id}`);
+          const listNext    = document.querySelector(`#alist-next-${zone.id}`);
+          const listCall    = document.querySelector(`#alist-call-${zone.id}`);
+
+          if (listCurrent) {
+            listCurrent.innerHTML = currentAthletes.length
+              ? currentAthletes.map(e => {
+                  const name = athleteName(e.athlete);
+                  const eff  = HyroxStore.effectiveCategory(e.athlete);
+                  const divL = HyroxStore.formatTeamDivisionLine(e.athlete);
+                  const elapsed = now - e.zStart;
+                  const remaining = e.zEnd - now;
+                  return `<div class="athlete-chip chip-active">
+                    <span class="chip-heat">H${e.heat.heat}</span>
+                    <span class="chip-name">${name}</span>
+                    <span class="chip-cat cat-${eff}">${divL}</span>
+                    <span class="chip-in-progress">● ${fmtCountdown(elapsed)} écoulé</span>
+                    <span class="chip-countdown" style="color:var(--muted)">reste ${fmtCountdown(remaining)}</span>
+                  </div>`;
+                }).join("")
+              : `<div class="empty-slot">Aucun athlète en ce moment</div>`;
+          }
+
+          // Prochain heat pour ce créneau
+          const upcomingInZone = scheduleCache
+            .map(heat => {
+              const zStart = parseHm(heat.startTime) + offsetsCache[zi];
+              return { heat, zStart, diff: zStart - now };
+            })
+            .filter(x => x.diff > 0)
+            .sort((a,b) => a.diff - b.diff)
+            .slice(0,1);
+
+          if (listNext) {
+            if (upcomingInZone.length) {
+              const { heat, zStart, diff } = upcomingInZone[0];
+              listNext.innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px">
+                H${heat.heat} — départ à ${toHm(zStart)} (dans ${fmtCountdown(diff)})
+              </div>` + heat.athletes.map(athlete => {
+                const name = athleteName(athlete);
+                const eff  = HyroxStore.effectiveCategory(athlete);
+                const divL = HyroxStore.formatTeamDivisionLine(athlete);
+                return `<div class="athlete-chip chip-soon">
+                  <span class="chip-heat">H${heat.heat}</span>
+                  <span class="chip-name">${name}</span>
+                  <span class="chip-cat cat-${eff}">${divL}</span>
+                  <span class="chip-time">${toHm(zStart)}</span>
+                </div>`;
+              }).join("");
+            } else {
+              listNext.innerHTML = `<div class="empty-slot">Aucun heat à venir</div>`;
+            }
+          }
+
+          // À appeler
+          const callCount = document.querySelector(`#call-count-${zone.id}`);
+          if (callCount) callCount.textContent = callAthletes.length ? `(${callAthletes.length})` : "";
+
+          if (listCall) {
+            listCall.innerHTML = callAthletes.length
+              ? callAthletes.map(e => {
+                  const name = athleteName(e.athlete);
+                  const eff  = HyroxStore.effectiveCategory(e.athlete);
+                  const divL = HyroxStore.formatTeamDivisionLine(e.athlete);
+                  return `<div class="athlete-chip chip-call chip-soon">
+                    <span class="chip-heat">H${e.heat.heat}</span>
+                    <span class="chip-name">${name}</span>
+                    <span class="chip-cat cat-${eff}">${divL}</span>
+                    <span class="chip-countdown">⚡ dans ${fmtCountdown(e.diff)}</span>
+                  </div>`;
+                }).join("")
+              : `<div class="empty-slot">Aucun appel dans les ${CALL_AHEAD_MIN} min</div>`;
+          }
+        });
+
+        // ── Timeline ──────────────────────────────────────────────
+        const tlBody = document.querySelector("#timeline-body");
+        if (tlBody) {
+          tlBody.innerHTML = scheduleCache.map(heat => {
+            const hs = parseHm(heat.startTime);
+            const he = hs + totalDuration;
+            const names = heat.athletes.map(a => athleteName(a)).join(", ");
+            const heatState = now >= he ? "past" : now >= hs ? "active" : "future";
+
+            const segs = zonesCache.map((z,i) => {
+              const zs = hs + offsetsCache[i];
+              const ze = zs + (z.durationMinutes||0);
+              const pct = ((z.durationMinutes||0) / (totalDuration||1) * 100).toFixed(1);
+              let cls = "tl-seg-future";
+              if (now >= ze)       cls = "tl-seg-past";
+              else if (now >= zs)  cls = "tl-seg-active";
+              else if (zs-now<=SOON_MIN) cls = "tl-seg-soon";
+              return `<div class="tl-seg ${cls} ${z.scored?"tl-seg-scored":""}" style="flex:${pct}" title="${z.name} — ${toHm(zs)}">${z.order}</div>`;
+            }).join("");
+
+            return `<div class="timeline-row">
+              <span class="tl-heat" style="${heatState==="active"?"color:var(--accent)":""}">H${heat.heat}</span>
+              <div class="tl-bar">${segs}</div>
+              <span class="tl-athletes" title="${names}">${names}</span>
+            </div>`;
+          }).join("") || `<div class="empty-slot">Aucun heat configuré</div>`;
+        }
+
+        // ── Bandeau d'alerte ──────────────────────────────────────
+        const banner   = document.querySelector("#alert-banner");
+        const alertTxt = document.querySelector("#alert-text");
+        if (alerts.length) {
+          const items = alerts
+            .sort((a,b) => a.diff - b.diff)
+            .map(a => `<strong>${athleteName(a.athlete)}</strong> → ${a.zone.name} (${toHm(a.zStart)}, dans ${fmtCountdown(a.diff)})`)
+            .join(" &nbsp;·&nbsp; ");
+          alertTxt.innerHTML = `Départ(s) imminent(s) : ${items}`;
+          banner.classList.add("visible");
+        } else {
+          banner.classList.remove("visible");
+        }
+      }
+
+      // ── Init ─────────────────────────────────────────────────────
+      HyroxAuth.requireAuth({ onSuccess: () => {
+        injectLogoutBtn();
+        HyroxStore.whenCloudReady().then(() => {
+          buildData();
+          buildZoneCards();
+          tick();
+          setInterval(tick, 1000);
+          renderNews();
+        }).catch(err => alert(`Cloud indisponible: ${err.message||err}`));
+      }});
+
+      // ── NEWS ──────────────────────────────────────────────────────
+      function renderNews() {
+        const state = HyroxStore.loadState();
+        const news  = state.news || [];
+        const list  = document.getElementById('news-list');
+        if (!news.length) {
+          list.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0">Aucun message. Ajoutez-en un ci-dessous.</div>';
+          return;
+        }
+        list.innerHTML = news.map((n, i) => `
+          <div class="news-row" id="news-row-${i}">
+            <label class="news-toggle" title="${n.active!==false?'Visible':'Masqué'}">
+              <input type="checkbox" ${n.active!==false?'checked':''} onchange="toggleNews(${i}, this.checked)"/>
+              <span class="toggle-track"></span>
+            </label>
+            <span class="news-text ${n.active===false?'news-off':''}">${n.text}</span>
+            <button class="danger" onclick="deleteNews(${i})" style="padding:4px 10px;font-size:12px">✕</button>
+          </div>`).join('');
+      }
+
+      function addNews() {
+        const inp = document.getElementById('news-input');
+        const text = inp.value.trim();
+        if (!text) return;
+        const state = HyroxStore.loadState();
+        state.news = [...(state.news||[]), { text, active: true }];
+        HyroxStore.saveState(state);
+        inp.value = '';
+        renderNews();
+      }
+
+      function deleteNews(idx) {
+        const state = HyroxStore.loadState();
+        state.news = (state.news||[]).filter((_,i)=>i!==idx);
+        HyroxStore.saveState(state);
+        renderNews();
+      }
+
+      function toggleNews(idx, active) {
+        const state = HyroxStore.loadState();
+        if (state.news && state.news[idx]) state.news[idx].active = active;
+        HyroxStore.saveState(state);
+        renderNews();
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      //  SAISIE RAPIDE DE SCORE
+      // ══════════════════════════════════════════════════════════════
+      const ZONE_META_OPS = {};
+
+      function openQS() {
+        const state = HyroxStore.loadState();
+        const athletes = (state.teams||[]).slice().sort((a,b)=>{
+          const ln = (a.lastName||"").localeCompare(b.lastName||"");
+          return ln !== 0 ? ln : (a.firstName||"").localeCompare(b.firstName||"");
+        });
+        const scoredZones = (state.events||[]).filter(e=>e.scored).sort((a,b)=>a.order-b.order);
+
+        const athSel = document.getElementById("qs-athlete");
+        athSel.innerHTML = athletes.map(a =>
+          `<option value="${a.id}">${(a.lastName||"").toUpperCase()} ${a.firstName||""} (${HyroxStore.formatTeamDivisionLine(a)})</option>`
+        ).join("");
+
+        const zoneSel = document.getElementById("qs-zone");
+        if (!scoredZones.length) {
+          zoneSel.innerHTML = `<option value="">— Aucune épreuve scorée —</option>`;
+        } else {
+          zoneSel.innerHTML = scoredZones.map(z =>
+            `<option value="${z.id}">${z.name}</option>`
+          ).join("");
+        }
+
+        document.getElementById("qs-dnf").checked = false;
+        document.getElementById("qs-overlay").classList.add("open");
+
+        athSel.addEventListener("change", qsRefresh);
+        zoneSel.addEventListener("change", qsRefresh);
+        qsRefresh();
+      }
+
+      function closeQS() {
+        document.getElementById("qs-overlay").classList.remove("open");
+        const athSel  = document.getElementById("qs-athlete");
+        const zoneSel = document.getElementById("qs-zone");
+        athSel.removeEventListener("change", qsRefresh);
+        zoneSel.removeEventListener("change", qsRefresh);
+      }
+
+      function qsRefresh() {
+        const state    = HyroxStore.loadState();
+        const athId    = document.getElementById("qs-athlete").value;
+        const zoneId   = document.getElementById("qs-zone").value;
+        const zone     = (state.events||[]).find(e=>e.id===zoneId);
+        const existing = (state.scores||[]).find(s => s.teamId === athId && s.eventId === zoneId);
+        const meta     = ZONE_META_OPS[zoneId] || { color:"#888", icon:"📋", label:zone?.name||zoneId };
+
+        // Bannière épreuve
+        const banner = document.getElementById("qs-zone-banner");
+        banner.style.display = "";
+        banner.style.borderColor = meta.color+"55";
+        banner.style.background  = meta.color+"11";
+        banner.innerHTML = `<span class="qs-zone-icon">${meta.icon}</span>
+          <span style="color:${meta.color}">${meta.label}</span>`;
+
+        // Score précédent
+        const prevEl = document.getElementById("qs-prev");
+        if (existing) {
+          const isDNF = existing.dnf;
+          let prevStr = "Score actuel : ";
+          if (isDNF) prevStr += "DNF";
+          else prevStr += existing.performance != null ? String(existing.performance) : (existing.rawValue != null ? String(existing.rawValue) : "—");
+          prevEl.textContent = prevStr;
+        } else {
+          prevEl.textContent = "Aucun score enregistré";
+        }
+
+        // Pré-remplir DNF
+        if (existing?.dnf) document.getElementById("qs-dnf").checked = true;
+
+        // Champs
+        qsRenderInputs(zoneId, zone, existing);
+      }
+
+      function qsRenderInputs(zoneId, zone, existing) {
+        const inputsEl = document.getElementById("qs-inputs");
+        const dnf = document.getElementById("qs-dnf").checked;
+
+        if (dnf) { inputsEl.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:10px">DNF — pas de score</div>`; return; }
+
+        const initVal = existing && !existing.dnf
+          ? (existing.performance != null ? String(existing.performance) : (existing.rawValue != null ? String(existing.rawValue) : ""))
+          : "";
+        inputsEl.innerHTML = `<div class="qs-field"><label>Score</label><input type="text" id="qs-generic" value="${(initVal || "").replace(/"/g, "&quot;")}" placeholder="—"></div>`;
+      }
+
+      function qsToggleDNF() { qsRefresh(); }
+
+      function saveQS() {
+        const state  = HyroxStore.loadState();
+        const athId  = document.getElementById("qs-athlete").value;
+        const zoneId = document.getElementById("qs-zone").value;
+        const dnf    = document.getElementById("qs-dnf").checked;
+
+        if (!athId || !zoneId) return;
+        if (!Array.isArray(state.scores)) state.scores = [];
+
+        if (dnf) {
+          HyroxStore.upsertScore(state, { teamId:athId, eventId:zoneId, performance:"DNF", rawValue:null, dnf:true, subValues:{} });
+        } else {
+          const v = document.getElementById("qs-generic")?.value||"";
+          HyroxStore.upsertScore(state, { teamId:athId, eventId:zoneId, performance:v, rawValue:HyroxStore.parseScoreValue(v), dnf:false });
+        }
+
+        HyroxStore.saveState(state);
+        closeQS();
+        // Toast minimal
+        const toast = document.createElement("div");
+        toast.style.cssText = "position:fixed;bottom:100px;right:28px;z-index:999;background:var(--accent);color:#000;padding:10px 20px;border-radius:8px;font-weight:700;font-size:13px;";
+        toast.textContent = "✓ Score enregistré";
+        document.body.appendChild(toast);
+        setTimeout(()=>toast.remove(), 2500);
+      }
+
+      // Les éléments news sont dans le DOM APRÈS ce script, on attend DOMContentLoaded
+      window.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('news-add-btn').addEventListener('click', addNews);
+        document.getElementById('news-input').addEventListener('keydown', e => { if(e.key==='Enter') addNews(); });
+      });
+    </script>
+
+    <!-- ── NEWS SECTION ───────────────────────────────────────────── -->
+    <style>
+      #news-section {
+        max-width: 760px; margin: 28px auto; padding: 0 24px;
+      }
+      .news-section-title {
+        font-size: 13px; font-weight: 800; text-transform: uppercase;
+        letter-spacing: .08em; color: var(--accent); margin-bottom: 14px;
+        display: flex; align-items: center; gap: 10px;
+      }
+      .news-add-row {
+        display: flex; gap: 8px; margin-bottom: 16px;
+      }
+      .news-add-row input {
+        flex: 1; font-size: 14px;
+      }
+      .news-list { display: flex; flex-direction: column; gap: 8px; }
+      .news-row {
+        display: flex; align-items: center; gap: 10px;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 8px; padding: 10px 14px;
+      }
+      .news-text { flex: 1; font-size: 14px; color: var(--text); }
+      .news-text.news-off { color: var(--muted); text-decoration: line-through; }
+
+      /* Toggle switch news → utilise .toggle-switch depuis styles.css */
+      .news-toggle { position:relative; display:inline-block; width:36px; height:20px; flex-shrink:0; cursor:pointer; }
+      .news-toggle input { opacity:0; width:0; height:0; }
+      .news-toggle .toggle-track { position:absolute; inset:0; border-radius:20px; background:var(--border-md); transition:.2s; cursor:pointer; }
+      .news-toggle .toggle-track::before { content:''; position:absolute; width:14px; height:14px; border-radius:50%; left:3px; top:3px; background:#fff; transition:.2s; }
+      .news-toggle input:checked + .toggle-track { background:var(--accent); }
+      .news-toggle input:checked + .toggle-track::before { transform:translateX(16px); }
+    </style>
+
+    <!-- ── Bouton Saisie rapide ───────────────────────────────────── -->
+    <button id="quick-score-fab" onclick="openQS()">✏️ Saisir un score</button>
+
+    <!-- ── Modal saisie rapide ────────────────────────────────────── -->
+    <div id="qs-overlay" onclick="if(event.target===this)closeQS()">
+      <div id="qs-modal">
+        <button class="qs-close" onclick="closeQS()">✕</button>
+        <div class="qs-title">✏️ Saisie rapide de score</div>
+
+        <div class="qs-field">
+          <label>Athlète</label>
+          <select id="qs-athlete"></select>
+        </div>
+
+        <div class="qs-field">
+          <label>Épreuve</label>
+          <select id="qs-zone"></select>
+        </div>
+
+        <div id="qs-zone-banner" class="qs-zone-banner" style="display:none"></div>
+        <div class="qs-prev" id="qs-prev"></div>
+
+        <!-- DNF toggle -->
+        <div class="qs-dnf-row">
+          <label class="qs-dnf-toggle">
+            <input type="checkbox" id="qs-dnf" onchange="qsToggleDNF()">
+            <span class="qs-dnf-track"></span>
+          </label>
+          <span>DNF / Abandon</span>
+        </div>
+
+        <!-- Champs dynamiques selon l’épreuve -->
+        <div id="qs-inputs" class="qs-inputs"></div>
+
+        <div class="qs-actions">
+          <button onclick="closeQS()">Annuler</button>
+          <button class="primary" onclick="saveQS()">💾 Enregistrer</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="news-section">
+      <div class="news-section-title">📢 Messages défilants — Dashboard TV</div>
+      <div class="news-add-row">
+        <input type="text" id="news-input" placeholder="Nouveau message…" maxlength="200"/>
+        <button class="primary" id="news-add-btn">Ajouter</button>
+      </div>
+      <div class="news-list" id="news-list"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+  </body>
+</html>

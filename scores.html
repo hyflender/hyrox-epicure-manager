@@ -1,0 +1,320 @@
+﻿<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Hyrox Epicure – Passages (Rox / segments)</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+  <link rel="stylesheet" href="./assets/css/styles.css"/>
+  <link rel="stylesheet" href="./assets/css/admin-bootstrap.css" />
+    <link rel="stylesheet" href="./assets/css/auth.css" />
+  <style>
+    /* Grille passages Hyrox (type Excel) */
+    .pass-h2 { font-size:1.1rem; margin-bottom:6px; }
+    .pass-grid-wrap {
+      overflow-x:auto; max-width:100%;
+      border:1px solid var(--border-md);
+      border-radius:8px;
+      background:var(--card,#141414);
+    }
+    .pass-sheet { border-collapse:separate; border-spacing:0; min-width:max-content; width:100%; font-size:11px; }
+    .pass-sheet th, .pass-sheet td { border:1px solid var(--border); padding:0; vertical-align:middle; }
+    .pass-sheet thead th {
+      text-align:center; font-family:var(--mono); font-weight:700; background:var(--raised,#1e1e1e);
+      padding:6px 3px; font-size:9px; letter-spacing:.04em; white-space:nowrap;
+    }
+    .pass-sheet .seg-h { min-width:78px; background:rgba(198,255,0,.08); color:var(--accent,#C6FF00); }
+    .pass-sheet .sub-h { color:var(--muted); font-size:8px; font-weight:600; padding:4px 2px; }
+    .pass-sheet .sub-h.r { color:#60A5FA; }
+    .pass-sheet .stick-p {
+      position:sticky; z-index:3; background:var(--card,#141414) !important;
+      box-shadow:4px 0 12px -4px rgba(0,0,0,.5);
+    }
+    .pass-sheet th.stick-p-0, .pass-sheet td.stick-p-0 { left:0; min-width:150px; max-width:220px; }
+    .pass-sheet th.stick-p-1, .pass-sheet td.stick-p-1 { left:150px; min-width:86px; }
+    .pass-sheet th.stick-p-2, .pass-sheet td.stick-p-2 { left:236px; min-width:44px; }
+    .pass-td-id { padding:4px 8px !important; font-weight:700; font-size:12px; line-height:1.25; }
+    .pass-inp {
+      width:100%; min-width:72px; max-width:96px; margin:0;
+      padding:6px 4px; font-size:11px; font-family:var(--mono);
+      background:var(--inset,#0d0d0d); border:none; color:var(--text);
+      text-align:center;
+    }
+    .pass-inp:focus { outline:2px solid var(--accent); outline-offset:-1px; }
+    .pass-td-heat0 { padding:4px 6px !important; text-align:center; }
+    .pass-heat0 {
+      display:block; font-family:var(--mono); font-size:11px; font-weight:800;
+      color:var(--accent); letter-spacing:0.02em;
+    }
+    .pass-rox {
+      text-align:center; font-family:var(--mono); font-size:10px; font-weight:700; color:#7DD3FC;
+      min-width:44px; padding:6px 2px; background:rgba(0,0,0,.2);
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-md navbar-dark border-bottom border-secondary admin-navbar">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="./index.html" title="Accueil public"><span class="fw-bold">HYROX</span> <span class="text-secondary" style="font-size:0.88rem">· Epicure</span></a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNav" aria-controls="adminNav" aria-expanded="false" aria-label="Menu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="adminNav">
+        <ul class="navbar-nav ms-md-auto flex-wrap py-2 py-md-0">
+          <li class="nav-item"><a class="nav-link" href="./portail.html">Espace athlètes</a></li>
+          <li class="nav-item"><a class="nav-link" href="./admin.html">Paramètres</a></li>
+          <li class="nav-item"><a class="nav-link" href="./tv.html" target="_blank" rel="noopener noreferrer">📺 TV</a></li>
+          <li class="nav-item"><a class="nav-link" href="./equipes.html">Équipes</a></li>
+          <li class="nav-item"><a class="nav-link" href="./planning.html">Planning</a></li>
+          <li class="nav-item"><a class="nav-link" href="./epreuves.html">Épreuves</a></li>
+          <li class="nav-item"><a class="nav-link active" href="./scores.html">Passages</a></li>
+          <li class="nav-item"><a class="nav-link" href="./classement.html">Classement</a></li>
+          <li class="nav-item"><a class="nav-link" href="./ops.html">Ops</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container-fluid px-2 px-sm-3 py-3 py-md-4">
+    <section class="card">
+      <h2 class="pass-h2">Passages &amp; temps Rox (Hyrox)</h2>
+      <p class="muted" style="font-size:12px;margin-bottom:10px;max-width:900px">
+        Le <strong>Start</strong> du <strong>RUN 1</strong> est l’<strong>heure de départ du heat</strong> (planning) — non modifiable. Saisis <strong>Start</strong> et <strong>End</strong> de chaque segment au format
+        <strong>HH:MM</strong> ou <strong>HH:MM:SS</strong> (heure du jour). La colonne <strong>Δ</strong> = <strong>temps de zone Rox</strong> : entre la <strong>fin</strong> du segment (End) et le <strong>début</strong> du segment suivant (ex. fin de run → début atelier, ou fin d’atelier → début du run suivant). Dernière ligne : pas de segment suivant (—).
+      </p>
+      <div class="pass-grid-wrap">
+        <table class="pass-sheet" id="passage-table" aria-label="Passages par segment Hyrox">
+          <thead id="passage-head"></thead>
+          <tbody id="passage-body"></tbody>
+        </table>
+      </div>
+      <div id="passage-status" style="font-size:11px;font-family:var(--mono);color:var(--muted);padding:8px 2px;min-height:18px"></div>
+    </section>
+  </main>
+
+  <script src="./assets/js/auth.js"></script>
+  <script src="./assets/js/data.js"></script>
+  <script>
+    const passageStatus = document.getElementById("passage-status");
+    function escPass(s) {
+      return String(s || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function savePassageFromInput(input) {
+      if (!input?.dataset?.teamId) return;
+      const teamId = input.dataset.teamId;
+      const seg = Number(input.dataset.seg);
+      const f = input.dataset.f;
+      if (f !== "arr" && f !== "dep") return;
+      const val = (input.value || "").trim();
+      const state = HyroxStore.loadState();
+      HyroxStore.setPassageField(state, teamId, seg, f, val);
+      HyroxStore.saveState(state);
+      if (passageStatus) {
+        passageStatus.textContent = `Passages enregistrés — ${new Date().toLocaleTimeString("fr-FR")} · sync…`;
+      }
+      HyroxStore.pushRemote(state)
+        .then(() => {
+          if (passageStatus) passageStatus.textContent = `Synchronisé — ${new Date().toLocaleTimeString("fr-FR")}`;
+          return pullPassagesFromCloud();
+        })
+        .catch(() => { if (passageStatus) passageStatus.textContent = `Mémorisé (cloud indisponible) — ${new Date().toLocaleTimeString("fr-FR")}`; });
+    }
+```
+
+Wait - `pullPassagesFromCloud` is used before its definition in the script? In JS function declarations are hoisted for `function pullPassages` - actually `function pullPassagesFromCloud` is a function declaration - hoisted to top of the script block. Good.
+
+But `savePassageFromInput` is defined before `pullPassagesFromCloud` in the source order - in JS, all function declarations in the same block are hoisted, so when savePassageFromInput runs, pullPassagesFromCloud exists. Good.
+
+**Issue**: `pullPassagesFromCloud` is called from within `savePassageFromInput` but it's defined **later** in the same IIFE scope. Function declarations are hoisted in a block - actually in browser script, `function pullPassages` is fully hoisted. Good.
+
+**Circular**: savePassage -> push -> pullPassages - pull might re-render, user not in input if focusout already fired. Good.
+
+Read lints for scores.html
+
+
+
+ReadLints
+
+    /** Lit la grille telle qu’affichée (y compris saisie en cours) pour un athlète. */
+    function readPassageSegmentsFromDom(teamId) {
+      const table = document.getElementById("passage-table");
+      if (!table) return Array.from({ length: 16 }, () => ({ arr: "", dep: "" }));
+      const dep0In = table.querySelector(`input.pass-inp[data-team-id="${teamId}"][data-seg="0"][data-f="dep"]`);
+      const tr = dep0In?.closest("tr");
+      const arr0 = (tr?.getAttribute("data-heat-start") || "").trim();
+      const segs = [];
+      for (let i = 0; i < 16; i++) {
+        if (i === 0) {
+          segs.push({ arr: arr0, dep: (dep0In?.value || "").trim() });
+        } else {
+          const aIn = table.querySelector(`input.pass-inp[data-team-id="${teamId}"][data-seg="${i}"][data-f="arr"]`);
+          const dIn = table.querySelector(`input.pass-inp[data-team-id="${teamId}"][data-seg="${i}"][data-f="dep"]`);
+          segs.push({
+            arr: (aIn?.value || "").trim(),
+            dep: (dIn?.value || "").trim(),
+          });
+        }
+      }
+      return segs;
+    }
+
+    /** Recalcule toutes les colonnes Δ (zone Rox) pour un athlète. */
+    function updateAllRoxRowsForTeam(teamId) {
+      const segs = readPassageSegmentsFromDom(teamId);
+      const table = document.getElementById("passage-table");
+      if (!table) return;
+      for (let i = 0; i < 16; i++) {
+        const rox = table.querySelector(`.pass-rox[data-team-id="${teamId}"][data-seg="${i}"]`);
+        if (!rox) continue;
+        if (i >= 15) {
+          rox.textContent = "—";
+          continue;
+        }
+        const rsec = HyroxStore.roxTransitionZoneSec(segs[i].dep, segs[i + 1].arr);
+        rox.textContent = rsec == null ? "—" : HyroxStore.formatDurationMMSS(rsec);
+      }
+    }
+
+    function renderPassageSheet() {
+      const state = HyroxStore.loadState();
+      const head = document.getElementById("passage-head");
+      const body = document.getElementById("passage-body");
+      if (!head || !body) return;
+      const L = HyroxStore.HYROX_PASSAGE_LABELS;
+      head.innerHTML = `<tr>
+        <th rowspan="2" class="stick-p stick-p-0">Athlète</th>
+        <th rowspan="2" class="stick-p stick-p-1">Cat.</th>
+        <th rowspan="2" class="stick-p stick-p-2">H</th>
+        ${L.map((n) => `<th colspan="3" class="seg-h">${n}</th>`).join("")}
+      </tr><tr>
+        ${L.map(() => '<th class="sub-h">Start</th><th class="sub-h">End</th><th class="sub-h r" title="Zone Rox : fin segment → début du suivant">Δ</th>').join("")}
+      </tr>`;
+      const sorted = [...state.teams].sort(HyroxStore.compareAthletes);
+      const schedule = HyroxStore.buildHeatSchedule(state);
+      const heatMap = {};
+      schedule.forEach((h) => h.athletes.forEach((a) => { heatMap[a.id] = h.heat; }));
+      if (!sorted.length) {
+        body.innerHTML = `<tr><td colspan="${3 + 16 * 3}" style="text-align:center;padding:24px;color:var(--muted)">Aucun athlète enregistré.</td></tr>`;
+        return;
+      }
+      body.innerHTML = sorted
+        .map((team) => {
+          const segs = HyroxStore.getPassageSegmentsReadOnly(state, team.id);
+          const eff = HyroxStore.effectiveCategory(team);
+          const line = escPass(HyroxStore.formatTeamDivisionLine(team));
+          const disp = escPass(HyroxStore.formatTeamDisplayName(team));
+          const h = heatMap[team.id] !== undefined ? heatMap[team.id] : "—";
+          const heat0 = escPass(HyroxStore.getHeatStartClockString(state, team.id) || "");
+          const cells = segs
+            .map((seg, i) => {
+              const a = seg.arr != null ? String(seg.arr) : "";
+              const d = seg.dep != null ? String(seg.dep) : "";
+              const rsec =
+                i >= 15
+                  ? null
+                  : HyroxStore.roxTransitionZoneSec(
+                      d,
+                      segs[i + 1] && segs[i + 1].arr != null ? String(segs[i + 1].arr) : ""
+                    );
+              const rtxt = rsec == null ? "—" : HyroxStore.formatDurationMMSS(rsec);
+              if (i === 0) {
+                return `<td class="pass-td-heat0" title="Départ du heat = début RUN 1 (planning)"><span class="pass-heat0">${heat0 || "—"}</span></td>
+        <td><input type="text" class="pass-inp" data-team-id="${escPass(team.id)}" data-seg="0" data-f="dep" value="${escPass(d)}" placeholder="End" autocomplete="off" spellcheck="false" /></td>
+        <td class="pass-rox" data-team-id="${escPass(team.id)}" data-seg="0">${rtxt}</td>`;
+              }
+              return `<td><input type="text" class="pass-inp" data-team-id="${escPass(team.id)}" data-seg="${i}" data-f="arr" value="${escPass(a)}" placeholder="Start" autocomplete="off" spellcheck="false" /></td>
+        <td><input type="text" class="pass-inp" data-team-id="${escPass(team.id)}" data-seg="${i}" data-f="dep" value="${escPass(d)}" placeholder="End" autocomplete="off" spellcheck="false" /></td>
+        <td class="pass-rox" data-team-id="${escPass(team.id)}" data-seg="${i}">${rtxt}</td>`;
+            })
+            .join("");
+          return `<tr data-heat-start="${heat0}">
+      <td class="pass-td-id stick-p stick-p-0">${disp}</td>
+      <td class="stick-p stick-p-1" style="padding:4px 6px"><span class="cat-badge cat-${eff}">${line}</span></td>
+      <td class="stick-p stick-p-2" style="text-align:center;font-family:var(--mono);font-weight:800;color:var(--accent)">H${h}</td>
+      ${cells}
+    </tr>`;
+        })
+        .join("");
+    }
+
+    (function bindPassageTableOnce() {
+      const table = document.getElementById("passage-table");
+      if (!table || table.dataset.bound === "1") return;
+      table.dataset.bound = "1";
+      table.addEventListener("input", (e) => {
+        const t = e.target;
+        if (!t.classList?.contains("pass-inp")) return;
+        const { teamId } = t.dataset;
+        if (teamId) updateAllRoxRowsForTeam(teamId);
+      });
+      table.addEventListener("focusout", (e) => {
+        const t = e.target;
+        if (!t.classList?.contains("pass-inp")) return;
+        savePassageFromInput(t);
+      });
+    })();
+
+    function isEditingPassageInput() {
+      const el = document.activeElement;
+      return (
+        el &&
+        el.classList &&
+        el.classList.contains("pass-inp") &&
+        document.getElementById("passage-table")?.contains(el)
+      );
+    }
+
+    /** Sync cloud → affichage (juge, autre onglet, TV). Sans réécrire le DOM si un champ a le focus. */
+    function pullPassagesFromCloud() {
+      return HyroxStore.pullRemote()
+        .then(() => {
+          if (isEditingPassageInput()) {
+            if (passageStatus) {
+              passageStatus.textContent =
+                `Mise à jour reçue — affichage dès que tu quittes le champ (saisie en cours) · ${new Date().toLocaleTimeString("fr-FR")}`;
+            }
+            return;
+          }
+          renderPassageSheet();
+          if (passageStatus) {
+            passageStatus.textContent = `Dernière sync live — ${new Date().toLocaleTimeString("fr-FR")}`;
+          }
+        })
+        .catch((err) => {
+          if (passageStatus) {
+            passageStatus.textContent = `Sync impossible — ${err && err.message ? err.message : "réseau"}`;
+          }
+          if (!isEditingPassageInput()) renderPassageSheet();
+        });
+    }
+
+    function render() {
+      renderPassageSheet();
+    }
+
+    const PASSAGE_POLL_MS = 4000;
+
+    HyroxAuth.requireAuth({ onSuccess: () => {
+      injectLogoutBtn();
+      HyroxStore.whenCloudReady()
+        .then(() => pullPassagesFromCloud())
+        .then(() => {
+          setInterval(pullPassagesFromCloud, PASSAGE_POLL_MS);
+          document.addEventListener("visibilitychange", () => {
+            if (!document.hidden) pullPassagesFromCloud();
+          });
+        })
+        .catch((err) => {
+          alert(`Cloud indisponible: ${err.message || err}`);
+          renderPassageSheet();
+        });
+    }});
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+</body>
+</html>

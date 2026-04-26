@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>HYROX · Juge (Epicure)</title>
+<style>
+:root{
+  --bg:#080c09;--surf:#0e1610;--surf2:#111811;
+  --brd:rgba(61,220,132,.13);--brd2:rgba(255,255,255,.06);
+  --live:#3ddc84;--gold:#f5c030;--orange:#f0a050;--red:#e84040;--blue:#7acce8;
+  --w:#f0f0ee;--w2:#b0b8b2;--w3:#5a6258;--w4:#2e3630;
+  --sans:system-ui,-apple-system,sans-serif;--mono:'Courier New',monospace;--r:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;min-height:100%;background:var(--bg);color:var(--w);font-family:var(--sans);overflow:hidden;}
+.judge-hint{font-size:11px;color:var(--w3);padding:6px 14px 0;flex-shrink:0;line-height:1.3;}
+/* ── HEADER ── */
+.hdr{display:flex;align-items:center;gap:10px;padding:12px 14px;padding-top:calc(12px + env(safe-area-inset-top,0px));background:var(--surf);border-bottom:1px solid var(--brd);flex-shrink:0;min-height:56px;}
+.hdr-back{width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:none;border:1px solid var(--brd);border-radius:6px;color:var(--w3);font-size:20px;cursor:pointer;flex-shrink:0;}
+.hdr-back:active{background:rgba(255,255,255,.06);}
+.hdr-title{flex:1;font-size:17px;font-weight:800;letter-spacing:.03em;color:var(--w);}
+.hdr-clock{font-family:var(--mono);font-size:17px;font-weight:600;color:var(--w2);flex-shrink:0;}
+/* ── SCREENS ── */
+.screen{display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;}
+.screen.on{display:flex;}
+#s-sel{height:calc(100dvh - 56px - env(safe-area-inset-top,0px));}
+#s-sta{height:calc(100dvh - 56px - env(safe-area-inset-top,0px) - 28px);}
+/* ══ SELECT ══ */
+.sel-list{flex:1;overflow-y:auto;padding:10px 10px calc(40px + env(safe-area-inset-bottom, 0px)) 10px;}
+.sel-sect{font-size:10px;font-weight:700;letter-spacing:.4em;text-transform:uppercase;color:var(--w3);padding:12px 4px 5px;}
+.pc{display:flex;align-items:center;gap:12px;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);padding:15px 14px;margin-bottom:7px;cursor:pointer;transition:border-color .15s,background .15s;-webkit-user-select:none;user-select:none;}
+.pc:active{background:rgba(61,220,132,.06);border-color:rgba(61,220,132,.35);}
+.pc-icon{width:40px;height:40px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.run-ic{background:rgba(122,204,232,.1);}
+.stat-ic{background:rgba(240,160,80,.1);}
+.pc-info{flex:1;}
+.pc-name{font-size:16px;font-weight:700;color:var(--w);}
+.pc-sub{font-size:12px;color:var(--w3);margin-top:2px;}
+.pc-arr{color:var(--w4);font-size:22px;}
+/* ══ STATION ══ */
+.sta-bar{display:flex;gap:0;flex-shrink:0;background:var(--surf2);border-bottom:1px solid var(--brd);}
+.sb{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 4px;border-right:1px solid var(--brd);}
+.sb:last-child{border-right:none;}
+.sb-val{font-family:var(--mono);font-size:20px;font-weight:700;}
+.sb-val.green{color:var(--live);}
+.sb-val.orange{color:var(--orange);}
+.sb-val.gray{color:var(--w3);}
+.sb-lbl{font-size:9px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:var(--w3);margin-top:1px;}
+.sta-list{flex:1;overflow-y:auto;padding:8px;min-height:0;}
+.sta-list::-webkit-scrollbar{width:0;}
+.ac{display:flex;align-items:center;gap:10px;border-radius:var(--r);padding:13px 14px;margin-bottom:6px;cursor:pointer;-webkit-user-select:none;user-select:none;transition:transform .08s,opacity .2s;border:1px solid var(--brd2);background:var(--surf);position:relative;overflow:hidden;}
+.ac:active{transform:scale(.975);}
+.ac.state-enter{ border-left:3px solid var(--live); }
+.ac.state-exit { border-left:3px solid var(--orange); }
+.ac.state-done { opacity:.38; border-left:3px solid var(--w4); pointer-events:none; }
+.ac.state-wait { border-left:3px solid var(--w4); opacity:.6; }
+.ac.state-soon{border-left:3px solid var(--blue);opacity:.8;}
+.ac.flash-soon{animation:fSoon .55s ease;}
+@keyframes fSoon{0%{background:rgba(122,204,232,.25);border-color:var(--blue)}100%{background:var(--surf)}}
+.ac.flash-enter{animation:fEn .55s ease;}
+.ac.flash-exit {animation:fEx .55s ease;}
+@keyframes fEn{0%{background:rgba(61,220,132,.3);border-color:var(--live)}100%{background:var(--surf)}}
+@keyframes fEx{0%{background:rgba(240,160,80,.25);border-color:var(--orange)}100%{background:var(--surf)}}
+.ac-heat{font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--live);background:rgba(61,220,132,.08);border:1px solid rgba(61,220,132,.2);border-radius:3px;padding:3px 6px;flex-shrink:0;text-align:center;min-width:30px;}
+.ac-names{flex:1;min-width:0;}
+.ac-n1{font-size:15px;font-weight:700;color:var(--w);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ac-n2{font-size:12px;color:var(--w3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ac-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;}
+.ac-action{font-size:10px;font-weight:800;letter-spacing:.25em;text-transform:uppercase;padding:3px 8px;border-radius:4px;}
+.ac-action.enter{color:var(--live);background:rgba(61,220,132,.1);}
+.ac-action.exit {color:var(--orange);background:rgba(240,160,80,.1);}
+.ac-action.done {color:var(--w3);}
+.ac-time{font-family:var(--mono);font-size:11px;color:var(--w3);}
+.ac-chrono{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--orange);margin-top:2px;}
+.ac-chrono.fast{color:var(--live);}
+.ac-duration{font-family:var(--mono);font-size:11px;color:var(--w3);margin-top:2px;}
+.list-sect{font-size:9px;font-weight:700;letter-spacing:.4em;text-transform:uppercase;color:var(--w4);padding:8px 4px 3px;}
+.log-bar{flex-shrink:0;background:var(--surf2);border-top:1px solid var(--brd);max-height:100px;overflow-y:auto;}
+.log-bar::-webkit-scrollbar{height:0;width:0;}
+.log-row{display:flex;align-items:center;gap:8px;padding:6px 14px;border-bottom:1px solid rgba(255,255,255,.03);}
+.log-t{font-family:var(--mono);font-size:11px;color:var(--live);flex-shrink:0;}
+.log-n{font-size:12px;color:var(--w2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.log-act{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;padding:2px 6px;border-radius:3px;flex-shrink:0;}
+.log-act.enter{color:var(--live);background:rgba(61,220,132,.1);}
+.log-act.exit {color:var(--orange);background:rgba(240,160,80,.1);}
+.log-undo{font-size:11px;color:var(--w3);cursor:pointer;padding:2px 8px;border:1px solid var(--brd);border-radius:3px;flex-shrink:0;}
+.log-undo:active{background:rgba(255,255,255,.06);}
+.log-empty{padding:8px 14px;font-size:11px;color:var(--w4);font-style:italic;}
+#toast{
+  position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(80px);
+  font-size:14px;font-weight:800;letter-spacing:.1em;
+  padding:11px 24px;border-radius:30px;z-index:999;white-space:nowrap;pointer-events:none;
+  transition:transform .28s cubic-bezier(.34,1.56,.64,1);
+}
+#toast.enter{background:var(--live);color:#030b05;}
+#toast.exit{background:var(--orange);color:#1a0800;}
+#toast.undo{background:var(--surf);color:var(--w2);border:1px solid var(--brd);}
+#toast.show{transform:translateX(-50%) translateY(0);}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:flex-end;z-index:998;opacity:0;pointer-events:none;transition:opacity .2s;}
+#modal.show{opacity:1;pointer-events:auto;}
+#mc{width:100%;background:var(--surf);border-top:1px solid var(--brd);border-radius:12px 12px 0 0;padding:22px 18px 38px;transform:translateY(100%);transition:transform .3s cubic-bezier(.34,1.2,.64,1);}
+#modal.show #mc{transform:translateY(0);}
+.ml{font-size:11px;font-weight:700;letter-spacing:.35em;text-transform:uppercase;margin-bottom:6px;}
+.ml.enter{color:var(--live);}
+.ml.exit{color:var(--orange);}
+.mn{font-size:20px;font-weight:800;color:var(--w);margin-bottom:4px;}
+.mp{font-family:var(--mono);font-size:14px;color:var(--orange);margin-bottom:18px;}
+.mbtns{display:flex;gap:10px;}
+.mbtn{flex:1;padding:14px;border-radius:var(--r);border:none;font-size:13px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;}
+.mbtn:active{opacity:.75;}
+.mbtn.cancel{background:rgba(255,255,255,.07);color:var(--w2);}
+.mbtn.go.enter{background:var(--live);color:#030b05;}
+.mbtn.go.exit{background:var(--orange);color:#1a0800;}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <button type="button" class="hdr-back" id="back-btn" style="display:none" aria-label="Retour">←</button>
+  <div class="hdr-title" id="hdr-title">HYROX · Juge</div>
+  <div class="hdr-clock" id="clock">--:--:--</div>
+</div>
+<div class="judge-hint" id="comp-hint"></div>
+<div class="screen on" id="s-sel">
+  <div class="sel-list">
+    <div class="sel-sect">Course</div>
+    <div class="pc" id="open-runs" role="button" tabindex="0">
+      <div class="pc-icon run-ic">🏃</div>
+      <div class="pc-info"><div class="pc-name">Runs</div><div class="pc-sub">Run 1 à Run 8 · détection automatique (sync cloud)</div></div>
+      <div class="pc-arr">›</div>
+    </div>
+    <div class="sel-sect">Ateliers</div>
+    <div id="stat-list"></div>
+  </div>
+</div>
+<div class="screen" id="s-sta">
+  <div class="sta-bar" id="sta-bar"></div>
+  <div class="sta-list" id="sta-list"></div>
+  <div class="log-bar" id="log-bar"><div class="log-empty">Aucun pointage</div></div>
+</div>
+<div id="toast" aria-live="polite"></div>
+<div id="modal">
+  <div id="mc">
+    <div class="ml" id="ml"></div>
+    <div class="mn" id="mn"></div>
+    <div class="mp" id="mp"></div>
+    <div class="mbtns">
+      <button type="button" class="mbtn cancel" id="modal-cancel">Annuler</button>
+      <button type="button" class="mbtn go enter" id="mgo">Écraser</button>
+    </div>
+  </div>
+</div>
+<script src="./assets/js/data.js"></script>
+<script>
+const STATS = [
+  {id:'ski',          label:'SkiErg',         icon:'🎿', colIn:'start_ski',          colOut:'end_ski'},
+  {id:'sled_push',    label:'Sled Push',      icon:'🛷', colIn:'start_sled_push',   colOut:'end_sled_push'},
+  {id:'sled_pull',    label:'Sled Pull',      icon:'🔗', colIn:'start_sled_pull',   colOut:'end_sled_pull'},
+  {id:'burpees',      label:'Burpee Jumps',   icon:'🤸', colIn:'start_burpees',     colOut:'end_burpees'},
+  {id:'row',          label:'RowErg',         icon:'🚣', colIn:'start_row',         colOut:'end_row'},
+  {id:'farmer_carry', label:'Farmer Carry',   icon:'🧺', colIn:'start_farmer_carry',colOut:'end_farmer_carry'},
+  {id:'lunges',       label:'Sandbag Lunges', icon:'🎒', colIn:'start_lunges',      colOut:'end_lunges'},
+  {id:'wall_ball',    label:'Wall Balls 🏁',  icon:'🏐', colIn:'start_wall_ball',   colOut:'end_wall_ball'},
+];
+const SEQ = [
+  {colIn:'start_run_1',colOut:'end_run_1',label:'Run 1'},
+  {colIn:'start_ski',colOut:'end_ski',label:'SkiErg'},
+  {colIn:'start_run_2',colOut:'end_run_2',label:'Run 2'},
+  {colIn:'start_sled_push',colOut:'end_sled_push',label:'Sled Push'},
+  {colIn:'start_run_3',colOut:'end_run_3',label:'Run 3'},
+  {colIn:'start_sled_pull',colOut:'end_sled_pull',label:'Sled Pull'},
+  {colIn:'start_run_4',colOut:'end_run_4',label:'Run 4'},
+  {colIn:'start_burpees',colOut:'end_burpees',label:'Burpees'},
+  {colIn:'start_run_5',colOut:'end_run_5',label:'Run 5'},
+  {colIn:'start_row',colOut:'end_row',label:'RowErg'},
+  {colIn:'start_run_6',colOut:'end_run_6',label:'Run 6'},
+  {colIn:'start_farmer_carry',colOut:'end_farmer_carry',label:'Farmer Carry'},
+  {colIn:'start_run_7',colOut:'end_run_7',label:'Run 7'},
+  {colIn:'start_lunges',colOut:'end_lunges',label:'Lunges'},
+  {colIn:'start_run_8',colOut:'end_run_8',label:'Run 8'},
+  {colIn:'start_wall_ball',colOut:'end_wall_b',label:'Wall Balls'},
+];
+const RUN_SEQS = SEQ.filter(s => s.label.startsWith('Run'));
+const STAMP_TO_SEG = (() => {
+  const o = { end_run_1: [0,'dep'], start_ski: [1,'arr'], end_ski: [1,'dep'], start_run_2: [2,'arr'], end_run_2: [2,'dep'],
+    start_sled_push: [3,'arr'], end_sled_push: [3,'dep'], start_run_3: [4,'arr'], end_run_3: [4,'dep'], start_sled_pull: [5,'arr'], end_sled_pull: [5,'dep'],
+    start_run_4: [6,'arr'], end_run_4: [6,'dep'], start_burpees: [7,'arr'], end_burpees: [7,'dep'], start_run_5: [8,'arr'], end_run_5: [8,'dep'],
+    start_row: [9,'arr'], end_row: [9,'dep'], start_run_6: [10,'arr'], end_run_6: [10,'dep'], start_farmer_carry: [11,'arr'], end_farmer_carry: [11,'dep'],
+    start_run_7: [12,'arr'], end_run_7: [12,'dep'], start_lunges: [13,'arr'], end_lunges: [13,'dep'], start_run_8: [14,'arr'], end_run_8: [14,'dep'],
+    start_wall_ball: [15,'arr'], end_wall_b: [15,'dep'] };
+  return o;
+})();
+
+let state = null;
+let _log = [];
+let _cur = null;
+let _pending = null;
+let _tT = null;
+
+function cssId(s) { return String(s).replace(/[^a-zA-Z0-9_-]/g, '_'); }
+
+function getVirtualSt(loadedState, teamId) {
+  const segs = HyroxStore.getPassageSegmentsReadOnly(loadedState, teamId);
+  const h = HyroxStore.getHeatStartClockString(loadedState, teamId) || "";
+  return {
+    start_run_1: h,
+    end_run_1: segs[0]?.dep || '',
+    start_ski: segs[1]?.arr || '', end_ski: segs[1]?.dep || '',
+    start_run_2: segs[2]?.arr || '', end_run_2: segs[2]?.dep || '',
+    start_sled_push: segs[3]?.arr || '', end_sled_push: segs[3]?.dep || '',
+    start_run_3: segs[4]?.arr || '', end_run_3: segs[4]?.dep || '',
+    start_sled_pull: segs[5]?.arr || '', end_sled_pull: segs[5]?.dep || '',
+    start_run_4: segs[6]?.arr || '', end_run_4: segs[6]?.dep || '',
+    start_burpees: segs[7]?.arr || '', end_burpees: segs[7]?.dep || '',
+    start_run_5: segs[8]?.arr || '', end_run_5: segs[8]?.dep || '',
+    start_row: segs[9]?.arr || '', end_row: segs[9]?.dep || '',
+    start_run_6: segs[10]?.arr || '', end_run_6: segs[10]?.dep || '',
+    start_farmer_carry: segs[11]?.arr || '', end_farmer_carry: segs[11]?.dep || '',
+    start_run_7: segs[12]?.arr || '', end_run_7: segs[12]?.dep || '',
+    start_lunges: segs[13]?.arr || '', end_lunges: segs[13]?.dep || '',
+    start_run_8: segs[14]?.arr || '', end_run_8: segs[14]?.dep || '',
+    start_wall_ball: segs[15]?.arr || '', end_wall_b: segs[15]?.dep || '',
+  };
+}
+function stFor(teamId) { return getVirtualSt(state, teamId); }
+
+function getHeatForTeam(loadedState, team) {
+  if (!loadedState || !team) return 0;
+  const schedule = HyroxStore.buildHeatSchedule(loadedState);
+  const block = schedule.find((h) => h.athletes.some((a) => a.id === team.id));
+  return block ? block.heat : 0;
+}
+
+function getNameLines(team) {
+  const main = HyroxStore.formatTeamDisplayName(team);
+  if (main.includes(' / ')) {
+    const parts = main.split(' / ').map((s) => s.trim());
+    return { main: parts[0] || '—', partner: parts[1] || '' };
+  }
+  return { main, partner: '' };
+}
+
+setInterval(() => {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}, 1000);
+
+function timeToSec(v) {
+  if (!v) return null;
+  const m = String(v).match(/(\d{1,2}):(\d{2}):(\d{2})/);
+  if (!m) return null;
+  return +m[1] * 3600 + +m[2] * 60 + +m[3];
+}
+function nowSec() {
+  const n = new Date();
+  return n.getHours() * 3600 + n.getMinutes() * 60 + n.getSeconds();
+}
+function fmtChrono(sec) {
+  const s = Math.max(0, Math.round(sec));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+}
+function fmtTime(v) {
+  if (!v) return '';
+  const mDate = String(v).match(/(\d{1,2}):(\d{2}):(\d{2})/);
+  if (mDate) return `${mDate[1].padStart(2, '0')}:${mDate[2]}:${mDate[3]}`;
+  return String(v).trim().substring(0, 8);
+}
+function parseHHMM(v) {
+  if (!v) return null;
+  const m = String(v).match(/(\d{1,2}):(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const d = new Date();
+  d.setHours(+m[1], +m[2], +m[3], 0);
+  return d;
+}
+
+function nowPassageString() {
+  return HyroxStore.formatPassageClock(nowSec());
+}
+
+function prereq(colIn) {
+  const i = SEQ.findIndex(s => s.colIn === colIn);
+  if (i <= 0) return null;
+  return SEQ[i - 1].colOut;
+}
+
+function nextAction(teamId) {
+  const st = stFor(teamId);
+  if (_cur === 'runs') {
+    for (let i = 0; i < SEQ.length; i++) {
+      const seg = SEQ[i];
+      if (!seg.label.startsWith('Run')) {
+        if (st[seg.colIn] && !st[seg.colOut]) return null;
+        continue;
+      }
+      const pre = i > 0 ? SEQ[i - 1].colOut : null;
+      const preOk = !pre || !!st[pre];
+      if (!preOk) continue;
+      if (seg.colIn === 'start_run_1') {
+        const t = parseHHMM(st['start_run_1']);
+        if (!t || t > new Date()) return null;
+        if (!st[seg.colOut]) return { col: seg.colOut, phase: 'exit', label: seg.label };
+        const nextSeg = SEQ[i + 1];
+        if (nextSeg && st[nextSeg.colIn] && !st[nextSeg.colOut]) return null;
+        continue;
+      }
+      if (!st[seg.colIn]) return { col: seg.colIn, phase: 'enter', label: seg.label };
+      if (!st[seg.colOut]) return { col: seg.colOut, phase: 'exit', label: seg.label };
+      if (i + 1 < SEQ.length) {
+        const nxt = SEQ[i + 1];
+        if (nxt && st[nxt.colIn] && !st[nxt.colOut]) return null;
+      }
+    }
+    return null;
+  }
+  const p = STATS.find(s => s.id === _cur);
+  if (!p) return null;
+  const outCol = p.colOut === 'end_wall_ball' ? 'end_wall_b' : p.colOut;
+  if (!st[p.colIn]) return { col: p.colIn, phase: 'enter', label: 'Entrée' };
+  if (!st[outCol]) return { col: outCol, phase: 'exit', label: 'Sortie' };
+  return null;
+}
+
+function isRelevant(teamId) {
+  const st = stFor(teamId);
+  if (_cur === 'runs') {
+    if (nextAction(teamId)) return true;
+    for (let i = 1; i < SEQ.length; i++) {
+      const seg = SEQ[i];
+      if (!seg.label.startsWith('Run')) continue;
+      const prevSeg = SEQ[i - 1];
+      if (st[prevSeg.colIn] && !st[prevSeg.colOut] && !st[seg.colIn]) return true;
+    }
+    const lastRun = RUN_SEQS[RUN_SEQS.length - 1];
+    return !!st[lastRun.colOut];
+  }
+  const p = STATS.find(s => s.id === _cur);
+  if (!p) return false;
+  const outKey = p.colOut === 'end_wall_ball' ? 'end_wall_b' : p.colOut;
+  const inKey = p.colIn;
+  const pre = prereq(p.colIn);
+  if ((!pre || !!st[pre]) || !!st[inKey]) return true;
+  if (pre) {
+    const prevSegIdx = SEQ.findIndex(s => s.colOut === pre);
+    if (prevSegIdx >= 0) {
+      const prevSeg = SEQ[prevSegIdx];
+      if (st[prevSeg.colIn] && !st[prevSeg.colOut]) {
+        if (prevSeg.colIn === 'start_run_1') {
+          const t = parseHHMM(st['start_run_1']);
+          if (!t || t > new Date()) return false;
+        }
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function buildSelect() {
+  document.getElementById('stat-list').innerHTML = STATS.map(p => `
+    <div class="pc" role="button" tabindex="0" data-station="${p.id}">
+      <div class="pc-icon stat-ic">${p.icon}</div>
+      <div class="pc-info"><div class="pc-name">${p.label}</div><div class="pc-sub">Atelier · tap = entrée ou sortie auto</div></div>
+      <div class="pc-arr">›</div>
+    </div>`).join('');
+  document.getElementById('stat-list').querySelectorAll('[data-station]').forEach((el) => {
+    el.addEventListener('click', () => openStation(el.getAttribute('data-station')));
+  });
+}
+document.getElementById('open-runs').addEventListener('click', () => openStation('runs'));
+
+function openStation(id) {
+  _cur = id;
+  document.getElementById('s-sel').classList.remove('on');
+  document.getElementById('s-sta').classList.add('on');
+  document.getElementById('back-btn').style.display = '';
+  const s = id === 'runs' ? null : STATS.find(p => p.id === id);
+  document.getElementById('hdr-title').textContent = s ? s.label : 'Runs';
+  render();
+}
+function goBack() {
+  _cur = null;
+  document.getElementById('s-sta').classList.remove('on');
+  document.getElementById('s-sel').classList.add('on');
+  document.getElementById('back-btn').style.display = 'none';
+  document.getElementById('hdr-title').textContent = 'HYROX · Juge';
+}
+document.getElementById('back-btn').addEventListener('click', goBack);
+
+function render() {
+  if (!_cur || !state) return;
+  const sorted = [...(state.teams || [])].sort((a, b) => {
+    const ha = getHeatForTeam(state, a);
+    const hb = getHeatForTeam(state, b);
+    if (ha !== hb) return ha - hb;
+    return (a.lastName || '').localeCompare(b.lastName || '', 'fr');
+  });
+  const active = [];
+  const waiting = [];
+  const soon = [];
+  const done = [];
+  sorted.forEach((r) => {
+    if (!isRelevant(r.id)) return;
+    const a = nextAction(r.id);
+    const st2 = stFor(r.id);
+    if (!a) {
+      let isSoon = false;
+      if (_cur === 'runs') {
+        for (let i = 1; i < SEQ.length; i++) {
+          const seg = SEQ[i];
+          if (!seg.label.startsWith('Run')) continue;
+          const prev = SEQ[i - 1];
+          if (st2[prev.colIn] && !st2[prev.colOut] && !st2[seg.colIn]) { isSoon = true; break; }
+        }
+      }
+      if (isSoon) soon.push(r);
+      else done.push(r);
+    } else if (a.phase === 'exit') {
+      active.push(r);
+    } else if (a.phase === 'enter') {
+      let isSoon2 = false;
+      if (_cur !== 'runs') {
+        const p = STATS.find(s => s.id === _cur);
+        if (p) {
+          const pr = prereq(p.colIn);
+          if (pr && !st2[pr]) {
+            const prevIdx = SEQ.findIndex(s => s.colOut === pr);
+            if (prevIdx >= 0 && st2[SEQ[prevIdx].colIn] && !st2[SEQ[prevIdx].colOut]) isSoon2 = true;
+          }
+        }
+      }
+      if (isSoon2) soon.push(r);
+      else waiting.push(r);
+    }
+  });
+  document.getElementById('sta-bar').innerHTML = `
+    <div class="sb"><div class="sb-val orange">${active.length}</div><div class="sb-lbl">En cours</div></div>
+    <div class="sb"><div class="sb-val gray">${waiting.length}</div><div class="sb-lbl">En attente</div></div>
+    <div class="sb"><div class="sb-val green">${done.length}</div><div class="sb-lbl">Terminé</div></div>`;
+  let html = '';
+  if (active.length) {
+    html += '<div class="list-sect">En cours — tap pour sortie</div>';
+    html += active.map((r) => cardHTML(r)).join('');
+  }
+  if (waiting.length) {
+    if (active.length) html += '<div style="height:4px"></div>';
+    html += '<div class="list-sect">En attente — tap pour entrée</div>';
+    html += waiting.map((r) => cardHTML(r)).join('');
+  }
+  if (soon.length) {
+    if (active.length || waiting.length) html += '<div style="height:4px"></div>';
+    html += '<div class="list-sect" style="color:var(--blue)">En approche — tap dès qu’ils arrivent</div>';
+    html += soon.map((r) => cardHTML(r, 'soon')).join('');
+  }
+  if (done.length) {
+    if (active.length || waiting.length || soon.length) html += '<div style="height:4px"></div>';
+    html += '<div class="list-sect">Terminés</div>';
+    html += done.map((r) => cardHTML(r)).join('');
+  }
+  if (!html) {
+    html = '<div style="padding:40px;text-align:center;font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:var(--w4)">Aucune équipe (vérif. Admin / compétition)…</div>';
+  }
+  document.getElementById('sta-list').innerHTML = html;
+  bindRowClicks();
+}
+
+function bindRowClicks() {
+  document.querySelectorAll('.ac[data-tap-tid]').forEach((el) => {
+    if (el.dataset.bound) return;
+    el.dataset.bound = '1';
+    el.addEventListener('click', () => {
+      const tid = el.getAttribute('data-tap-tid');
+      if (tid) {
+        try { window.tap(decodeURIComponent(tid)); } catch (_) {}
+      }
+    });
+  });
+  document.querySelectorAll('.ac[data-tap-soon]').forEach((el) => {
+    if (el.dataset.boundSoon) return;
+    el.dataset.boundSoon = '1';
+    el.addEventListener('click', () => {
+      try {
+        const p = JSON.parse(el.getAttribute('data-tap-soon'));
+        if (p && p.teamId && p.col) window.tapSoon(p.teamId, p.col, p.label || '');
+      } catch (_) {}
+    });
+  });
+}
+window.tap = function tap(teamId) {
+  const a = nextAction(teamId);
+  if (!a) return;
+  const st = stFor(teamId);
+  const existing = st[a.col];
+  if (existing) {
+    const { main } = getNameLines(state.teams.find(t => t.id === teamId) || {});
+    document.getElementById('ml').textContent = 'Déjà pointé — Écraser ?';
+    document.getElementById('ml').className = `ml ${a.phase}`;
+    document.getElementById('mn').textContent = `${main} (H${getHeatForTeam(state, { id: teamId }) || '?'})`;
+    document.getElementById('mp').textContent = `Pointé à ${existing}`;
+    document.getElementById('mgo').className = `mbtn go ${a.phase}`;
+    _pending = { teamId, col: a.col, phase: a.phase };
+    document.getElementById('modal').classList.add('show');
+  } else {
+    doStamp(teamId, a.col, a.phase);
+  }
+};
+
+function doStamp(teamId, col, phase) {
+  if (col === 'start_run_1') return;
+  const time = nowPassageString();
+  const map = STAMP_TO_SEG[col];
+  if (!map) { console.warn('col inconnue', col); return; }
+  const [segIndex, field] = map;
+  let st2 = HyroxStore.loadState();
+  HyroxStore.setPassageField(st2, teamId, segIndex, field, time);
+  state = HyroxStore.saveState(st2);
+  const team = state.teams.find(t => t.id === teamId);
+  const { main } = getNameLines(team || {});
+  const a = nextAction(teamId);
+  const labelForLog = col.replace(/^start_|^end_/, '').replace(/_/g, ' ');
+  const elCard = document.getElementById(`ac-${cssId(teamId)}`);
+  if (elCard) { elCard.classList.add(`flash-${phase}`); setTimeout(() => elCard.classList.remove(`flash-${phase}`), 550); }
+  showToast(phase, `H${getHeatForTeam(state, team) || '?'} · ${time}`);
+  _log.unshift({ teamId, name: main, col, phase, time, label: labelForLog });
+  if (_log.length > 30) _log.pop();
+  renderLog();
+  setTimeout(render, 580);
+}
+window.tapSoon = function tapSoon(teamId, col, label) {
+  const st = stFor(teamId);
+  const existing = st[col];
+  if (existing) {
+    const team = state.teams.find(t => t.id === teamId);
+    const { main } = getNameLines(team || {});
+    document.getElementById('ml').textContent = 'Déjà pointé — Écraser ?';
+    document.getElementById('ml').className = 'ml enter';
+    document.getElementById('mn').textContent = `${main} (H${getHeatForTeam(state, team) || '?'})`;
+    document.getElementById('mp').textContent = `Pointé à ${existing}`;
+    document.getElementById('mgo').className = 'mbtn go enter';
+    _pending = { teamId, col, phase: 'enter' };
+    document.getElementById('modal').classList.add('show');
+  } else {
+    doStamp(teamId, col, 'enter');
+  }
+};
+
+function confirmOverwrite() {
+  document.getElementById('modal').classList.remove('show');
+  if (_pending) {
+    doStamp(_pending.teamId, _pending.col, _pending.phase);
+    _pending = null;
+  }
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+  _pending = null;
+}
+document.getElementById('modal-cancel').addEventListener('click', closeModal);
+document.getElementById('mgo').addEventListener('click', confirmOverwrite);
+document.getElementById('modal').addEventListener('click', (e) => { if (e.target && e.target.id === 'modal') closeModal(); });
+document.getElementById('mc').addEventListener('click', (e) => e.stopPropagation());
+
+function renderLog() {
+  const el = document.getElementById('log-bar');
+  if (!_log.length) { el.innerHTML = '<div class="log-empty">Aucun pointage</div>'; return; }
+  el.innerHTML = _log.slice(0, 8).map((l, i) => `
+    <div class="log-row">
+      <div class="log-t">${l.time}</div>
+      <div class="log-n">H${getHeatForTeam(state, { id: l.teamId }) || '?'} · ${l.name} · ${l.label}</div>
+      <div class="log-act ${l.phase}">${l.phase === 'enter' ? 'ENTRÉE' : 'SORTIE'}</div>
+      <div class="log-undo" data-undo-idx="${i}">Annuler</div>
+    </div>`).join('');
+  el.querySelectorAll('[data-undo-idx]').forEach((u) => {
+    u.addEventListener('click', () => {
+      const j = +u.getAttribute('data-undo-idx');
+      window.undoLog(j);
+    });
+  });
+}
+window.undoLog = function undoLog(i) {
+  const l = _log[i];
+  if (!l) return;
+  const map = STAMP_TO_SEG[l.col];
+  if (map) {
+    let st2 = HyroxStore.loadState();
+    HyroxStore.setPassageField(st2, l.teamId, map[0], map[1], '');
+    state = HyroxStore.saveState(st2);
+  }
+  _log.splice(i, 1);
+  renderLog();
+  render();
+  showToast('undo', '↩ Annulé');
+};
+
+function showToast(phase, msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = phase;
+  void t.offsetWidth;
+  t.classList.add('show');
+  if (_tT) clearTimeout(_tT);
+  _tT = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+setInterval(() => {
+  document.querySelectorAll('[data-start]').forEach((el) => {
+    const startSec = +el.dataset.start;
+    if (isNaN(startSec)) return;
+    const elapsed = Math.max(0, nowSec() - startSec);
+    el.textContent = fmtChrono(elapsed);
+    el.className = elapsed < 120 ? 'ac-chrono fast' : 'ac-chrono';
+  });
+}, 1000);
+
+function cardHTML(r, mode) {
+  const a = nextAction(r.id);
+  const { main, partner } = getNameLines(r);
+  const st = stFor(r.id);
+  const h = getHeatForTeam(state, r);
+  const hid = cssId(r.id);
+  if (mode === 'soon') {
+    let soonCol = null;
+    let soonLabel = '';
+    if (_cur === 'runs') {
+      const nextRunSeg = RUN_SEQS.find(s => !st[s.colIn]);
+      soonCol = nextRunSeg ? nextRunSeg.colIn : null;
+      soonLabel = nextRunSeg ? nextRunSeg.label + ' →' : 'Run ?';
+    } else {
+      const p = STATS.find(s => s.id === _cur);
+      soonCol = p ? p.colIn : null;
+      soonLabel = 'Entrée';
+    }
+    const onSoon = soonCol
+      ? ` data-tap-soon='${JSON.stringify({ teamId: r.id, col: soonCol, label: soonLabel })}'`
+      : '';
+    return `<div class="ac state-soon" id="ac-soon-${hid}"${onSoon}>
+      <div class="ac-heat">H${h}</div>
+      <div class="ac-names">
+        <div class="ac-n1">${main}</div>
+        ${partner ? `<div class="ac-n2">${partner}</div>` : ''}
+      </div>
+      <div class="ac-right"><span class="ac-action" style="color:var(--blue);background:rgba(122,204,232,.1)">${soonLabel}</span></div>
+    </div>`;
+  }
+  let stateClass = 'state-wait';
+  let actionHTML = '';
+  let timeStr = '';
+  if (!a) {
+    stateClass = 'state-done';
+    const p = _cur === 'runs' ? null : STATS.find(s => s.id === _cur);
+  const outKey = p ? (p.colOut === 'end_wall_ball' ? 'end_wall_b' : p.colOut) : '';
+  const inKey = p ? p.colIn : '';
+  const outVal = p ? st[outKey] : '';
+  const inVal = p ? st[inKey] : '';
+    const tOut = timeToSec(outVal);
+    const tIn = timeToSec(inVal);
+    const dur = tOut != null && tIn != null ? tOut - tIn : null;
+    actionHTML = '<span class="ac-action done">✓</span>';
+    if (dur != null && dur > 0) {
+      actionHTML += `<span class="ac-duration">${fmtChrono(dur)}</span>`;
+    } else if (outVal) {
+      timeStr = fmtTime(outVal);
+    }
+  } else if (a.phase === 'exit') {
+    stateClass = 'state-exit';
+    const startCol = a.col.replace(/^end_/, 'start_');
+    const startVal = st[startCol] || '';
+    const startSec = timeToSec(startVal);
+    const elapsed = startSec != null ? Math.max(0, nowSec() - startSec) : null;
+    actionHTML = `<span class="ac-action exit">${_cur === 'runs' ? a.label + ' ■' : 'Sortie'}</span>`;
+    if (elapsed != null) {
+      const chronoCls = elapsed < 120 ? 'ac-chrono fast' : 'ac-chrono';
+      actionHTML += `<span class="${chronoCls}" data-start="${startSec}" id="ch-${hid}">${fmtChrono(elapsed)}</span>`;
+    } else if (startVal) {
+      actionHTML += `<div class="ac-time">${fmtTime(startVal)}</div>`;
+    }
+  } else {
+    stateClass = 'state-enter';
+    actionHTML = `<span class="ac-action enter">${_cur === 'runs' ? a.label : 'Entrée'}</span>`;
+  }
+  return `<div class="ac ${stateClass}" id="ac-${hid}" data-tap-tid="${encodeURIComponent(r.id)}">
+    <div class="ac-heat">H${h}</div>
+    <div class="ac-names">
+      <div class="ac-n1">${main}</div>
+      ${partner ? `<div class="ac-n2">${partner}</div>` : ''}
+    </div>
+    <div class="ac-right">
+      ${actionHTML}
+      ${timeStr ? `<div class="ac-time">${timeStr}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+async function pull() {
+  try {
+    await HyroxStore.pullRemote();
+  } catch (e) {
+    console.warn(e);
+  }
+  state = HyroxStore.loadState();
+  if (_cur) render();
+}
+
+(async function init() {
+  const ref = HyroxStore.getEffectiveCompetitionRef();
+  const hint = document.getElementById('comp-hint');
+  if (!ref) {
+    hint.textContent = 'Ajoutez le même ?comp=… qu’en admin / TV (ex. hyrox-epicure-2026).';
+    return;
+  }
+  hint.textContent = `Compétition : ${ref} · Saisie enregistrée sur le cloud (même source que la TV / Passages).`;
+  try {
+    await HyroxStore.whenCloudReady();
+    await HyroxStore.pullRemote();
+  } catch (e) {
+    console.warn(e);
+  }
+  state = HyroxStore.loadState();
+  buildSelect();
+  setInterval(pull, 5000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
+})();
+</script>
+</body>
+</html>

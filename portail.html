@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hyrox · Epicure — Espace athlètes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <link rel="stylesheet" href="./assets/css/styles.css" />
+    <link rel="stylesheet" href="./assets/css/admin-bootstrap.css" />
+    <style>
+      .portal-hero { padding: 2rem 0 1rem; text-align: center; }
+      .portal-hero h1 { font-size: clamp(1.35rem, 3.5vw, 1.85rem); font-weight: 900; }
+      .portal-tile {
+        display: block; height: 100%; padding: 1.5rem; border-radius: 14px;
+        border: 1px solid var(--border); background: var(--card);
+        text-decoration: none; color: var(--text); transition: border-color 0.2s, transform 0.15s;
+      }
+      .portal-tile:hover { border-color: var(--accent-border); color: var(--text); transform: translateY(-2px); }
+      .portal-tile .ico { font-size: 1.75rem; margin-bottom: 0.5rem; }
+      .portal-tile h2 { font-size: 1.05rem; font-weight: 800; margin-bottom: 0.35rem; }
+      .portal-tile p { font-size: 0.85rem; color: var(--muted); margin: 0; }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-md navbar-dark border-bottom border-secondary admin-navbar">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="./index.html"><span class="fw-bold">HYROX</span> <span class="text-secondary" style="font-size:0.88rem">· Athlètes</span></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#athleteNav" aria-controls="athleteNav" aria-expanded="false" aria-label="Menu">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="athleteNav">
+          <ul class="navbar-nav ms-md-auto flex-wrap py-2 py-md-0">
+            <li class="nav-item"><a class="nav-link active" href="./portail.html">Portail</a></li>
+            <li class="nav-item"><a class="nav-link" href="./planning.html">Planning</a></li>
+            <li class="nav-item"><a class="nav-link" href="./epreuves.html">Épreuves</a></li>
+            <li class="nav-item"><a class="nav-link" href="./classement.html">Classement</a></li>
+            <li class="nav-item"><a class="nav-link" href="./athlete.html">Mes résultats</a></li>
+            <li class="nav-item"><a class="nav-link text-secondary" href="./admin.html" title="Espace gérant">Espace gérant</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container-fluid px-2 px-sm-3 py-3 py-md-4" style="max-width: 960px;">
+      <div class="portal-hero">
+        <h1>Espace athlètes</h1>
+        <p class="text-muted mb-0">Accès aux infos publics de la compétition. Utilise le lien que t’envoie l’orga (avec <code class="text-secondary">?comp=…</code>) si besoin.</p>
+      </div>
+      <div class="row g-3 g-md-4 py-3">
+        <div class="col-12 col-sm-6">
+          <a class="portal-tile" href="./planning.html">
+            <div class="ico">📅</div>
+            <h2>Planning des heats</h2>
+            <p>Planning, temps réel.</p>
+          </a>
+        </div>
+        <div class="col-12 col-sm-6">
+          <a class="portal-tile" href="./classement.html">
+            <div class="ico">🏆</div>
+            <h2>Classement</h2>
+            <p>Résultats et rangs par catégorie.</p>
+          </a>
+        </div>
+        <div class="col-12 col-sm-6">
+          <a class="portal-tile" href="./epreuves.html">
+            <div class="ico">📋</div>
+            <h2>Épreuves</h2>
+            <p>Format officiel Hyrox : 8 km + 8 stations.</p>
+          </a>
+        </div>
+        <div class="col-12 col-sm-6">
+          <a class="portal-tile" href="./athlete.html">
+            <div class="ico">🔎</div>
+            <h2>Mes résultats</h2>
+            <p>Recherche par nom sur toutes les compétitions.</p>
+          </a>
+        </div>
+      </div>
+      <p class="text-center small text-muted pt-2"><a href="./index.html" class="text-secondary">← Accueil</a></p>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="./assets/js/data.js"></script>
+  </body>
+</html>
