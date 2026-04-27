@@ -33,6 +33,43 @@
     .pass-sheet th.stick-p-0, .pass-sheet td.stick-p-0 { left:0; min-width:150px; max-width:220px; }
     .pass-sheet th.stick-p-1, .pass-sheet td.stick-p-1 { left:150px; min-width:86px; }
     .pass-sheet th.stick-p-2, .pass-sheet td.stick-p-2 { left:236px; min-width:44px; }
+    .pass-sheet th.stick-p-3, .pass-sheet td.stick-p-3 { left:280px; min-width:48px; width:48px; text-align:center; }
+    .pass-sheet th.stick-p-4, .pass-sheet td.stick-p-4 { left:328px; min-width:76px; width:76px; text-align:center; padding:4px 3px !important; }
+    .pass-row-clear { font-size:10px !important; padding:2px 6px !important; line-height:1.2; white-space:nowrap; }
+    .pass-td-dnf {
+      padding:6px 4px !important;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:visible;
+    }
+    /* Les styles globaux (styles.css) mettent appearance:none + width:100% sur tous les input — à rétablir pour la case cochée visible */
+    .pass-sheet input.pass-dnf,
+    .pass-sheet input[type="checkbox"].pass-dnf {
+      width:18px !important;
+      height:18px !important;
+      min-width:18px !important;
+      max-width:none !important;
+      margin:0 !important;
+      padding:0 !important;
+      flex-shrink:0;
+      cursor:pointer;
+      accent-color:#E74C3C;
+      -webkit-appearance:checkbox !important;
+      appearance:auto !important;
+      background:var(--inset,#1a1a1a) !important;
+      border:1px solid var(--border,#444) !important;
+      border-radius:4px !important;
+      box-shadow:none !important;
+      vertical-align:middle;
+    }
+    .pass-sheet input.pass-dnf:focus {
+      outline:2px solid rgba(231,76,60,.6) !important;
+      outline-offset:1px;
+      box-shadow:none !important;
+    }
+    tr.pass-row-dnf { background:rgba(231,76,60,.08); }
+    tr.pass-row-dnf .pass-inp:disabled { opacity:0.45; cursor:not-allowed; }
     .pass-td-id { padding:4px 8px !important; font-weight:700; font-size:12px; line-height:1.25; }
     .pass-inp {
       width:100%; min-width:72px; max-width:96px; margin:0;
@@ -81,6 +118,8 @@
       <p class="muted" style="font-size:12px;margin-bottom:10px;max-width:900px">
         Le <strong>Start</strong> du <strong>RUN 1</strong> est l’<strong>heure de départ du heat</strong> (planning) — non modifiable. Saisis <strong>Start</strong> et <strong>End</strong> de chaque segment au format
         <strong>HH:MM</strong> ou <strong>HH:MM:SS</strong> (heure du jour). La colonne <strong>Δ</strong> = <strong>temps de zone Rox</strong> : entre la <strong>fin</strong> du segment (End) et le <strong>début</strong> du segment suivant (ex. fin de run → début atelier, ou fin d’atelier → début du run suivant). Dernière ligne : pas de segment suivant (—).
+        Coche <strong>DNF</strong> si l’athlète n’a pas terminé le parcours : la saisie des passages est alors désactivée pour cette ligne (stocké avec les passages, sync cloud).
+        Le bouton <strong>Effacer</strong> sur chaque ligne remet à zéro uniquement les passages de cet athlète (et le DNF de la ligne).
       </p>
       <div class="pass-grid-wrap">
         <table class="pass-sheet" id="passage-table" aria-label="Passages par segment Hyrox">
@@ -123,21 +162,64 @@
         })
         .catch(() => { if (passageStatus) passageStatus.textContent = `Mémorisé (cloud indisponible) — ${new Date().toLocaleTimeString("fr-FR")}`; });
     }
-```
 
-Wait - `pullPassagesFromCloud` is used before its definition in the script? In JS function declarations are hoisted for `function pullPassages` - actually `function pullPassagesFromCloud` is a function declaration - hoisted to top of the script block. Good.
+    function applyDnfRowDom(teamId, dnf) {
+      const tr = Array.from(document.querySelectorAll("#passage-table tbody tr[data-pass-team]")).find(
+        (r) => r.getAttribute("data-pass-team") === teamId
+      );
+      if (!tr) return;
+      tr.classList.toggle("pass-row-dnf", dnf);
+      tr.querySelectorAll("input.pass-inp").forEach((inp) => {
+        inp.disabled = dnf;
+      });
+    }
 
-But `savePassageFromInput` is defined before `pullPassagesFromCloud` in the source order - in JS, all function declarations in the same block are hoisted, so when savePassageFromInput runs, pullPassagesFromCloud exists. Good.
+    function onClearRowPassages(teamId) {
+      if (
+        !confirm(
+          "Effacer tous les passages saisis pour cet athlète ?\nLa case DNF de cette ligne sera aussi décochée.\nCette action sera enregistrée et synchronisée sur le cloud."
+        )
+      ) {
+        return;
+      }
+      const state = HyroxStore.loadState();
+      HyroxStore.clearHyroxPassagesForTeam(state, teamId);
+      HyroxStore.saveState(state);
+      if (passageStatus) {
+        passageStatus.textContent = `Passages de la ligne effacés — ${new Date().toLocaleTimeString("fr-FR")} · sync…`;
+      }
+      renderPassageSheet();
+      HyroxStore.pushRemote(state)
+        .then(() => {
+          if (passageStatus) passageStatus.textContent = `Synchronisé — ${new Date().toLocaleTimeString("fr-FR")}`;
+          return pullPassagesFromCloud();
+        })
+        .catch(() => {
+          if (passageStatus) {
+            passageStatus.textContent = `Mémorisé (cloud indisponible) — ${new Date().toLocaleTimeString("fr-FR")}`;
+          }
+        });
+    }
 
-**Issue**: `pullPassagesFromCloud` is called from within `savePassageFromInput` but it's defined **later** in the same IIFE scope. Function declarations are hoisted in a block - actually in browser script, `function pullPassages` is fully hoisted. Good.
-
-**Circular**: savePassage -> push -> pullPassages - pull might re-render, user not in input if focusout already fired. Good.
-
-Read lints for scores.html
-
-
-
-ReadLints
+    function savePassageDnf(input) {
+      if (!input?.dataset?.teamId) return;
+      const teamId = input.dataset.teamId;
+      const state = HyroxStore.loadState();
+      HyroxStore.setHyroxPassageDnf(state, teamId, input.checked);
+      HyroxStore.saveState(state);
+      applyDnfRowDom(teamId, input.checked);
+      if (passageStatus) {
+        passageStatus.textContent = `DNF parcours ${input.checked ? "enregistré" : "retiré"} — ${new Date().toLocaleTimeString("fr-FR")} · sync…`;
+      }
+      HyroxStore.pushRemote(state)
+        .then(() => {
+          if (passageStatus) passageStatus.textContent = `Synchronisé — ${new Date().toLocaleTimeString("fr-FR")}`;
+          return pullPassagesFromCloud();
+        })
+        .catch(() => {
+          if (passageStatus) passageStatus.textContent = `Mémorisé (cloud indisponible) — ${new Date().toLocaleTimeString("fr-FR")}`;
+        });
+    }
 
     /** Lit la grille telle qu’affichée (y compris saisie en cours) pour un athlète. */
     function readPassageSegmentsFromDom(teamId) {
@@ -189,6 +271,8 @@ ReadLints
         <th rowspan="2" class="stick-p stick-p-0">Athlète</th>
         <th rowspan="2" class="stick-p stick-p-1">Cat.</th>
         <th rowspan="2" class="stick-p stick-p-2">H</th>
+        <th rowspan="2" class="stick-p stick-p-3" title="Did Not Finish — abandon parcours Hyrox">DNF</th>
+        <th rowspan="2" class="stick-p stick-p-4" title="Réinitialiser les passages de cette ligne uniquement">Effacer</th>
         ${L.map((n) => `<th colspan="3" class="seg-h">${n}</th>`).join("")}
       </tr><tr>
         ${L.map(() => '<th class="sub-h">Start</th><th class="sub-h">End</th><th class="sub-h r" title="Zone Rox : fin segment → début du suivant">Δ</th>').join("")}
@@ -198,11 +282,13 @@ ReadLints
       const heatMap = {};
       schedule.forEach((h) => h.athletes.forEach((a) => { heatMap[a.id] = h.heat; }));
       if (!sorted.length) {
-        body.innerHTML = `<tr><td colspan="${3 + 16 * 3}" style="text-align:center;padding:24px;color:var(--muted)">Aucun athlète enregistré.</td></tr>`;
+        body.innerHTML = `<tr><td colspan="${5 + 16 * 3}" style="text-align:center;padding:24px;color:var(--muted)">Aucun athlète enregistré.</td></tr>`;
         return;
       }
       body.innerHTML = sorted
         .map((team) => {
+          const raceDnf = HyroxStore.getHyroxPassageDnf(state, team.id);
+          const dis = raceDnf ? " disabled" : "";
           const segs = HyroxStore.getPassageSegmentsReadOnly(state, team.id);
           const eff = HyroxStore.effectiveCategory(team);
           const line = escPass(HyroxStore.formatTeamDivisionLine(team));
@@ -223,18 +309,20 @@ ReadLints
               const rtxt = rsec == null ? "—" : HyroxStore.formatDurationMMSS(rsec);
               if (i === 0) {
                 return `<td class="pass-td-heat0" title="Départ du heat = début RUN 1 (planning)"><span class="pass-heat0">${heat0 || "—"}</span></td>
-        <td><input type="text" class="pass-inp" data-team-id="${escPass(team.id)}" data-seg="0" data-f="dep" value="${escPass(d)}" placeholder="End" autocomplete="off" spellcheck="false" /></td>
+        <td><input type="text" class="pass-inp" data-team-id="${escPass(team.id)}" data-seg="0" data-f="dep" value="${escPass(d)}" placeholder="End" autocomplete="off" spellcheck="false"${dis} /></td>
         <td class="pass-rox" data-team-id="${escPass(team.id)}" data-seg="0">${rtxt}</td>`;
               }
-              return `<td><input type="text" class="pass-inp" data-team-id="${escPass(team.id)}" data-seg="${i}" data-f="arr" value="${escPass(a)}" placeholder="Start" autocomplete="off" spellcheck="false" /></td>
-        <td><input type="text" class="pass-inp" data-team-id="${escPass(team.id)}" data-seg="${i}" data-f="dep" value="${escPass(d)}" placeholder="End" autocomplete="off" spellcheck="false" /></td>
+              return `<td><input type="text" class="pass-inp" data-team-id="${escPass(team.id)}" data-seg="${i}" data-f="arr" value="${escPass(a)}" placeholder="Start" autocomplete="off" spellcheck="false"${dis} /></td>
+        <td><input type="text" class="pass-inp" data-team-id="${escPass(team.id)}" data-seg="${i}" data-f="dep" value="${escPass(d)}" placeholder="End" autocomplete="off" spellcheck="false"${dis} /></td>
         <td class="pass-rox" data-team-id="${escPass(team.id)}" data-seg="${i}">${rtxt}</td>`;
             })
             .join("");
-          return `<tr data-heat-start="${heat0}">
+          return `<tr data-heat-start="${heat0}" data-pass-team="${escPass(team.id)}" class="${raceDnf ? "pass-row-dnf" : ""}">
       <td class="pass-td-id stick-p stick-p-0">${disp}</td>
       <td class="stick-p stick-p-1" style="padding:4px 6px"><span class="cat-badge cat-${eff}">${line}</span></td>
       <td class="stick-p stick-p-2" style="text-align:center;font-family:var(--mono);font-weight:800;color:var(--accent)">H${h}</td>
+      <td class="stick-p stick-p-3 pass-td-dnf"><input type="checkbox" class="pass-dnf" data-team-id="${escPass(team.id)}" ${raceDnf ? "checked" : ""} title="N'a pas terminé le parcours (DNF)" aria-label="DNF parcours pour ${disp}" /></td>
+      <td class="stick-p stick-p-4"><button type="button" class="btn btn-sm btn-outline-secondary pass-row-clear" data-team-id="${escPass(team.id)}" title="Effacer tous les passages de cette ligne">Effacer</button></td>
       ${cells}
     </tr>`;
         })
@@ -256,6 +344,17 @@ ReadLints
         if (!t.classList?.contains("pass-inp")) return;
         savePassageFromInput(t);
       });
+      table.addEventListener("change", (e) => {
+        const t = e.target;
+        if (t && t.classList && t.classList.contains("pass-dnf")) savePassageDnf(t);
+      });
+      table.addEventListener("click", (e) => {
+        const btn = e.target.closest(".pass-row-clear");
+        if (!btn) return;
+        e.preventDefault();
+        const tid = btn.getAttribute("data-team-id");
+        if (tid) onClearRowPassages(tid);
+      });
     })();
 
     function isEditingPassageInput() {
@@ -268,14 +367,23 @@ ReadLints
       );
     }
 
+    function isInteractingWithPassageTable() {
+      const el = document.activeElement;
+      const table = document.getElementById("passage-table");
+      if (!table || !el) return isEditingPassageInput();
+      if (!table.contains(el)) return isEditingPassageInput();
+      if (el.classList?.contains("pass-dnf")) return true;
+      return isEditingPassageInput();
+    }
+
     /** Sync cloud → affichage (juge, autre onglet, TV). Sans réécrire le DOM si un champ a le focus. */
     function pullPassagesFromCloud() {
       return HyroxStore.pullRemote()
         .then(() => {
-          if (isEditingPassageInput()) {
+          if (isInteractingWithPassageTable()) {
             if (passageStatus) {
               passageStatus.textContent =
-                `Mise à jour reçue — affichage dès que tu quittes le champ (saisie en cours) · ${new Date().toLocaleTimeString("fr-FR")}`;
+                `Mise à jour reçue — affichage dès que tu quittes le champ ou la case DNF (saisie en cours) · ${new Date().toLocaleTimeString("fr-FR")}`;
             }
             return;
           }
@@ -288,7 +396,7 @@ ReadLints
           if (passageStatus) {
             passageStatus.textContent = `Sync impossible — ${err && err.message ? err.message : "réseau"}`;
           }
-          if (!isEditingPassageInput()) renderPassageSheet();
+          if (!isInteractingWithPassageTable()) renderPassageSheet();
         });
     }
 

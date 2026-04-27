@@ -264,7 +264,6 @@ function scheduleAutoPush(stateSnapshot) {
       await whenCloudReady();
       notifySync("pending", "Synchronisation automatique...");
       await pushRemote(stateSnapshot);
-      notifySync("success", "Synchronisation automatique OK.");
     } catch (err) {
       notifySync("error", `Erreur sync auto: ${err.message || err}`);
       console.error("Erreur sync auto", err);
@@ -279,22 +278,38 @@ function normalizeState(rawState) {
     // Les épreuves sont fixes : on ignore toujours ce qui vient du cloud/local.
     events: structuredClone(defaultState.events),
   };
-  state.teams = (state.teams || []).map((team) => {
-    const t = normalizeTeamFormatFields({ ...team });
-    return {
-      ...t,
-      firstName: t.firstName || "",
-      lastName: t.lastName || "",
-      partnerFirstName: t.partnerFirstName || "",
-      partnerLastName: t.partnerLastName || "",
-      name: buildTeamName(t),
-      email: typeof t.email === "string" ? t.email.trim() : "",
-      category: t.category,
-      teamFormat: t.teamFormat,
-      gender: t.gender || "",
-      heatNumber: Number(t.heatNumber || 1),
-    };
+  // Un seul enregistrement par id (évite doublons visibles sur la TV / classement après sync)
+  const seenTeamIds = new Set();
+  state.teams = (state.teams || [])
+    .filter((team) => {
+      const id = String(team?.id || "").trim();
+      if (!id) return true;
+      if (seenTeamIds.has(id)) return false;
+      seenTeamIds.add(id);
+      return true;
+    })
+    .map((team) => {
+      const t = normalizeTeamFormatFields({ ...team });
+      return {
+        ...t,
+        firstName: t.firstName || "",
+        lastName: t.lastName || "",
+        partnerFirstName: t.partnerFirstName || "",
+        partnerLastName: t.partnerLastName || "",
+        name: buildTeamName(t),
+        email: typeof t.email === "string" ? t.email.trim() : "",
+        category: t.category,
+        teamFormat: t.teamFormat,
+        gender: t.gender || "",
+        heatNumber: Number(t.heatNumber || 1),
+      };
+    });
+  const byScoreKey = new Map();
+  (state.scores || []).forEach((s) => {
+    if (!s || s.teamId == null || s.eventId == null) return;
+    byScoreKey.set(`${s.teamId}\0${s.eventId}`, s);
   });
+  state.scores = Array.from(byScoreKey.values());
   state.events = (state.events || []).map((event, index) => ({
     ...event,
     order: Number(event.order || index + 1),
@@ -355,6 +370,8 @@ async function pushRemote(stateArg) {
   } else {
     stateCache = state;
   }
+  /* Permet à la TV (autres onglets) de rafraîchir dès un passage / score enregistré ici. */
+  notifySync("success", "État publié sur le cloud.");
   return rows;
 }
 
@@ -494,7 +511,7 @@ function getRanking(state) {
     });
   });
 
-  return state.teams
+  const rows = state.teams
     .map((team) => {
       const eventRanks = scoredEvents.map((e) => ({
         eventId: e.id,
@@ -519,6 +536,21 @@ function getRanking(state) {
       if (b.scoredCount === 0) return -1;
       return a.total - b.total;
     });
+  const seenOut = new Set();
+  return rows.filter((r) => {
+    if (!r.teamId || seenOut.has(r.teamId)) return false;
+    seenOut.add(r.teamId);
+    return true;
+  });
+}
+
+/** Vrai si l'équipe a au moins un DNF sur une épreuve scorée (abandon, non terminé). */
+function teamHasDnfScore(state, teamId) {
+  if (!state?.scores?.length || !teamId) return false;
+  const scoredIds = new Set((state.events || []).filter((e) => e.scored).map((e) => e.id));
+  return state.scores.some(
+    (s) => s.teamId === teamId && s.dnf && scoredIds.has(s.eventId)
+  );
 }
 
 function parseHmToMinutes(hm) {
@@ -728,8 +760,8 @@ function upsertScore(state, payload) {
 }
 
 const HYROX_PASSAGE_LABELS = [
-  "RUN 1", "SKI", "RUN 2", "PUSH", "RUN 3", "PULL", "RUN 4", "BBJ",
-  "RUN 5", "ROW", "RUN 6", "FARM", "RUN 7", "LUNGE", "RUN 8", "WALLS",
+  "RUN 1", "SKI ERG", "RUN 2", "SLED PUSH", "RUN 3", "SLED PULL", "RUN 4", "BBJ",
+  "RUN 5", "ROW", "RUN 6", "FARMER CARRY", "RUN 7", "LUNGE", "RUN 8", "WALLBALL",
 ];
 
 /** Heure du jour → secondes depuis minuit (HH:MM ou HH:MM:SS). */
@@ -840,6 +872,7 @@ function getTeamPassages(state, teamId) {
   if (!state.hyroxPassages[teamId]) {
     state.hyroxPassages[teamId] = {
       segments: Array.from({ length: 16 }, () => ({ arr: "", dep: "" })),
+      dnf: false,
     };
   } else if (!Array.isArray(state.hyroxPassages[teamId].segments)) {
     state.hyroxPassages[teamId].segments = Array.from({ length: 16 }, () => ({ arr: "", dep: "" }));
@@ -849,7 +882,36 @@ function getTeamPassages(state, teamId) {
     }
     state.hyroxPassages[teamId].segments = state.hyroxPassages[teamId].segments.slice(0, 16);
   }
+  if (typeof state.hyroxPassages[teamId].dnf !== "boolean") {
+    state.hyroxPassages[teamId].dnf = false;
+  }
   return state.hyroxPassages[teamId].segments;
+}
+
+/** Abandon parcours (passages) — coché depuis scores.html, distinct du DNF des épreuves scorées. */
+function getHyroxPassageDnf(state, teamId) {
+  const e = state.hyroxPassages?.[teamId];
+  return !!(e && e.dnf === true);
+}
+
+function setHyroxPassageDnf(state, teamId, dnf) {
+  if (!state.hyroxPassages || typeof state.hyroxPassages !== "object") state.hyroxPassages = {};
+  getTeamPassages(state, teamId);
+  state.hyroxPassages[teamId].dnf = !!dnf;
+}
+
+/**
+ * Remet à zéro les passages Hyrox d’un seul athlète : segments vides, DNF retiré.
+ * Recolle le Start RUN 1 sur l’heure de départ du heat si le planning le fournit.
+ */
+function clearHyroxPassagesForTeam(state, teamId) {
+  if (!teamId || !state.teams?.some((t) => t.id === teamId)) return;
+  if (!state.hyroxPassages || typeof state.hyroxPassages !== "object") state.hyroxPassages = {};
+  state.hyroxPassages[teamId] = {
+    segments: Array.from({ length: 16 }, () => ({ arr: "", dep: "" })),
+    dnf: false,
+  };
+  syncHyroxPassageRun1Starts(state);
 }
 
 /** Aligne le Start (arr) du RUN 1 sur l’heure de départ du heat pour chaque athlète. */
@@ -886,6 +948,7 @@ window.HyroxStore = {
   loadState,
   saveState,
   getRanking,
+  teamHasDnfScore,
   buildHeatSchedule,
   getHeatStartClockString,
   getAthleteEndMinutes,
@@ -903,6 +966,9 @@ window.HyroxStore = {
   getTeamPassages,
   getPassageSegmentsReadOnly,
   setPassageField,
+  getHyroxPassageDnf,
+  setHyroxPassageDnf,
+  clearHyroxPassagesForTeam,
   parseScoreValue,
   effectiveNowMin,
   getHyroxPreset,

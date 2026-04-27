@@ -66,11 +66,19 @@ html,body{height:100%;min-height:100%;background:var(--bg);color:var(--w);font-f
 .ac-names{flex:1;min-width:0;}
 .ac-n1{font-size:15px;font-weight:700;color:var(--w);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ac-n2{font-size:12px;color:var(--w3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Carte : prénom en avant, nom en second plan (juge cherche le prénom) */
+.ac-prenom{font-size:clamp(18px,4.2vw,22px);font-weight:800;color:var(--w);line-height:1.1;letter-spacing:-.02em;}
+.ac-nomline{font-size:11px;font-weight:600;color:var(--w2);margin-top:3px;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ac-nomline .ac-init{color:var(--live);font-weight:800;margin-right:4px;letter-spacing:0;}
+.ac-prenom-duo{flex-wrap:wrap;}
+.ac-duo-sep{color:var(--w3);font-weight:800;padding:0 5px;opacity:.9;font-size:.92em;}
 .ac-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;}
-.ac-action{font-size:10px;font-weight:800;letter-spacing:.25em;text-transform:uppercase;padding:3px 8px;border-radius:4px;}
-.ac-action.enter{color:var(--live);background:rgba(61,220,132,.1);}
-.ac-action.exit {color:var(--orange);background:rgba(240,160,80,.1);}
-.ac-action.done {color:var(--w3);}
+.ac-action{display:inline-block;font-size:12px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;padding:7px 12px;border-radius:6px;border:1px solid transparent;}
+.ac-action.enter{color:var(--live);background:rgba(61,220,132,.2);border-color:rgba(61,220,132,.4);}
+.ac-action.exit {color:var(--orange);background:rgba(240,160,80,.2);border-color:rgba(240,160,80,.4);}
+.ac-action.done {color:var(--w3);font-size:11px;letter-spacing:.15em;border:none;padding:3px 8px;}
+.ac-pulse-ok{animation:pulseOk .65s ease;}
+@keyframes pulseOk{0%{box-shadow:0 0 0 0 rgba(61,220,132,.5);}40%{box-shadow:0 0 0 10px rgba(61,220,132,0);}100%{box-shadow:0 0 0 0 rgba(0,0,0,0);}}
 .ac-time{font-family:var(--mono);font-size:11px;color:var(--w3);}
 .ac-chrono{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--orange);margin-top:2px;}
 .ac-chrono.fast{color:var(--live);}
@@ -88,15 +96,39 @@ html,body{height:100%;min-height:100%;background:var(--bg);color:var(--w);font-f
 .log-undo:active{background:rgba(255,255,255,.06);}
 .log-empty{padding:8px 14px;font-size:11px;color:var(--w4);font-style:italic;}
 #toast{
-  position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(80px);
-  font-size:14px;font-weight:800;letter-spacing:.1em;
-  padding:11px 24px;border-radius:30px;z-index:999;white-space:nowrap;pointer-events:none;
-  transition:transform .28s cubic-bezier(.34,1.56,.64,1);
+  position:fixed;bottom:max(18px, env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%) translateY(120px);
+  max-width:min(96vw,420px);z-index:999;pointer-events:none;
+  text-align:center;transition:transform .3s cubic-bezier(.34,1.56,.64,1);
 }
-#toast.enter{background:var(--live);color:#030b05;}
-#toast.exit{background:var(--orange);color:#1a0800;}
-#toast.undo{background:var(--surf);color:var(--w2);border:1px solid var(--brd);}
+.toast-inner{
+  display:inline-block;padding:14px 22px 16px;border-radius:20px;box-shadow:0 8px 32px rgba(0,0,0,.45);
+  border:2px solid rgba(255,255,255,.12);
+}
+.toast-line1{font-size:17px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;line-height:1.2;}
+.toast-line2{font-size:15px;font-weight:800;font-family:var(--mono);margin-top:6px;opacity:.95;}
+#toast.enter .toast-inner{background:var(--live);color:#030b05;}
+#toast.exit .toast-inner{background:var(--orange);color:#1a0800;}
+#toast.undo .toast-inner{background:var(--surf);color:var(--w2);border-color:var(--brd);}
 #toast.show{transform:translateX(-50%) translateY(0);}
+/* Bandeau annulation dernier pointage (lisible en extérieur) */
+.undo-ribbon{
+  position:fixed;bottom:max(12px, env(safe-area-inset-bottom, 0px));left:8px;right:8px;z-index:1000;
+  transform:translateY(100px);opacity:0;transition:transform .3s,opacity .25s;pointer-events:none;
+}
+.undo-ribbon.on{transform:translateY(0);opacity:1;pointer-events:auto;}
+.undo-ribbon-inner{
+  display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;
+  background:linear-gradient(180deg, var(--surf2) 0%, #0a0f0b 100%);
+  border:1px solid var(--brd);border-radius:12px;padding:10px 12px;box-shadow:0 -4px 24px rgba(0,0,0,.35);
+}
+.undo-rib-txt{font-size:12px;font-weight:700;color:var(--w3);letter-spacing:.08em;flex:1;min-width:0;}
+.undo-rib-btn{
+  font-size:15px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;
+  padding:12px 18px;border-radius:8px;border:2px solid var(--red);background:rgba(232,64,64,.12);color:var(--red);
+  cursor:pointer;flex-shrink:0;
+}
+.undo-rib-btn:active{background:rgba(232,64,64,.25);}
+#toast.with-undo{bottom:max(100px, calc(18px + env(safe-area-inset-bottom)));}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:flex-end;z-index:998;opacity:0;pointer-events:none;transition:opacity .2s;}
 #modal.show{opacity:1;pointer-events:auto;}
 #mc{width:100%;background:var(--surf);border-top:1px solid var(--brd);border-radius:12px 12px 0 0;padding:22px 18px 38px;transform:translateY(100%);transition:transform .3s cubic-bezier(.34,1.2,.64,1);}
@@ -138,7 +170,13 @@ html,body{height:100%;min-height:100%;background:var(--bg);color:var(--w);font-f
   <div class="sta-list" id="sta-list"></div>
   <div class="log-bar" id="log-bar"><div class="log-empty">Aucun pointage</div></div>
 </div>
-<div id="toast" aria-live="polite"></div>
+<div id="undo-ribbon" class="undo-ribbon" aria-live="polite" hidden>
+  <div class="undo-ribbon-inner">
+    <span class="undo-rib-txt" id="undo-rib-txt">Dernier pointage enregistré</span>
+    <button type="button" class="undo-rib-btn" id="undo-rib-btn">↩ Annuler (10s)</button>
+  </div>
+</div>
+<div id="toast" aria-live="polite" role="status"><div class="toast-inner"><div class="toast-line1" id="toast-l1"></div><div class="toast-line2" id="toast-l2" style="display:none"></div></div></div>
 <div id="modal">
   <div id="mc">
     <div class="ml" id="ml"></div>
@@ -152,6 +190,7 @@ html,body{height:100%;min-height:100%;background:var(--bg);color:var(--w);font-f
 </div>
 <script src="./assets/js/data.js"></script>
 <script>
+/* Pointages : HyroxStore.setPassageField uniquement — même source que Passages / TV (sync cloud). */
 const STATS = [
   {id:'ski',          label:'SkiErg',         icon:'🎿', colIn:'start_ski',          colOut:'end_ski'},
   {id:'sled_push',    label:'Sled Push',      icon:'🛷', colIn:'start_sled_push',   colOut:'end_sled_push'},
@@ -196,6 +235,8 @@ let _log = [];
 let _cur = null;
 let _pending = null;
 let _tT = null;
+let _undoRibbonTimer = null;
+let _undoDeadline = 0;
 
 function cssId(s) { return String(s).replace(/[^a-zA-Z0-9_-]/g, '_'); }
 
@@ -231,6 +272,11 @@ function getHeatForTeam(loadedState, team) {
   return block ? block.heat : 0;
 }
 
+/** DNF parcours (page Passages) : pas de pointage juge. */
+function isParcoursDnf(teamId) {
+  return !!(state && HyroxStore.getHyroxPassageDnf(state, teamId));
+}
+
 function getNameLines(team) {
   const main = HyroxStore.formatTeamDisplayName(team);
   if (main.includes(' / ')) {
@@ -238,6 +284,47 @@ function getNameLines(team) {
     return { main: parts[0] || '—', partner: parts[1] || '' };
   }
   return { main, partner: '' };
+}
+
+function escHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function lastNameInitial(ln) {
+  const t = String(ln || "").trim();
+  return t ? t[0].toUpperCase() + "." : "";
+}
+
+/** Bloc HTML cartes : gros prénom + ligne nom — duo : prénom + init. côte à côte avec « / ». */
+function cardNameHtml(team) {
+  if (!team) return '<div class="ac-prenom">—</div>';
+  const fmt = team.teamFormat || "Solo";
+  if (fmt === "Solo") {
+    const fn = (team.firstName || "").trim() || "—";
+    const ln = (team.lastName || "").trim();
+    const init = lastNameInitial(ln);
+    return `<div class="ac-prenom">${escHtml(fn)}</div>
+    <div class="ac-nomline">${init ? `<span class="ac-init">${escHtml(init)}</span>` : ""}${escHtml(ln)}</div>`;
+  }
+  const p1f = (team.firstName || "").trim() || "—";
+  const ln1 = (team.lastName || "").trim();
+  const p2f = (team.partnerFirstName || "").trim();
+  const ln2 = (team.partnerLastName || "").trim();
+  const seg1 = escHtml(p1f) + (ln1 ? " " + escHtml(lastNameInitial(ln1)) : "");
+  const seg2 = p2f
+    ? escHtml(p2f) + (ln2 ? " " + escHtml(lastNameInitial(ln2)) : "")
+    : "";
+  const line1 = seg2 ? `${seg1}<span class="ac-duo-sep"> / </span>${seg2}` : seg1;
+  const nomsDuo = [ln1, ln2].filter(Boolean);
+  const line2 = nomsDuo.length ? nomsDuo.map(escHtml).join(" / ") : "";
+  return (
+    `<div class="ac-prenom ac-prenom-duo">${line1}</div>` +
+    (line2 ? `<div class="ac-nomline">${line2}</div>` : "")
+  );
 }
 
 setInterval(() => {
@@ -390,12 +477,16 @@ document.getElementById('back-btn').addEventListener('click', goBack);
 
 function render() {
   if (!_cur || !state) return;
-  const sorted = [...(state.teams || [])].sort((a, b) => {
-    const ha = getHeatForTeam(state, a);
-    const hb = getHeatForTeam(state, b);
-    if (ha !== hb) return ha - hb;
-    return (a.lastName || '').localeCompare(b.lastName || '', 'fr');
-  });
+  const sorted = [...(state.teams || [])]
+    .filter((t) => !isParcoursDnf(t.id))
+    .sort((a, b) => {
+      const ha = getHeatForTeam(state, a);
+      const hb = getHeatForTeam(state, b);
+      if (ha !== hb) return ha - hb;
+      const cfn = (a.firstName || "").localeCompare(b.firstName || "", "fr", { sensitivity: "base" });
+      if (cfn !== 0) return cfn;
+      return (a.lastName || "").localeCompare(b.lastName || "", "fr", { sensitivity: "base" });
+    });
   const active = [];
   const waiting = [];
   const soon = [];
@@ -459,7 +550,7 @@ function render() {
     html += done.map((r) => cardHTML(r)).join('');
   }
   if (!html) {
-    html = '<div style="padding:40px;text-align:center;font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:var(--w4)">Aucune équipe (vérif. Admin / compétition)…</div>';
+    html = '<div style="padding:40px;text-align:center;font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:var(--w4)">Aucune équipe éligible (vides, DNF parcours exclus — vérif. Admin)…</div>';
   }
   document.getElementById('sta-list').innerHTML = html;
   bindRowClicks();
@@ -488,6 +579,7 @@ function bindRowClicks() {
   });
 }
 window.tap = function tap(teamId) {
+  if (isParcoursDnf(teamId)) return;
   const a = nextAction(teamId);
   if (!a) return;
   const st = stFor(teamId);
@@ -507,6 +599,7 @@ window.tap = function tap(teamId) {
 };
 
 function doStamp(teamId, col, phase) {
+  if (isParcoursDnf(teamId)) return;
   if (col === 'start_run_1') return;
   const time = nowPassageString();
   const map = STAMP_TO_SEG[col];
@@ -520,14 +613,23 @@ function doStamp(teamId, col, phase) {
   const a = nextAction(teamId);
   const labelForLog = col.replace(/^start_|^end_/, '').replace(/_/g, ' ');
   const elCard = document.getElementById(`ac-${cssId(teamId)}`);
-  if (elCard) { elCard.classList.add(`flash-${phase}`); setTimeout(() => elCard.classList.remove(`flash-${phase}`), 550); }
-  showToast(phase, `H${getHeatForTeam(state, team) || '?'} · ${time}`);
+  if (elCard) {
+    elCard.classList.add(`flash-${phase}`, "ac-pulse-ok");
+    setTimeout(() => elCard.classList.remove(`flash-${phase}`, "ac-pulse-ok"), 650);
+  }
+  try {
+    if (navigator.vibrate) navigator.vibrate(phase === "enter" ? [12, 40, 12] : [20, 25, 20]);
+  } catch (_) {}
   _log.unshift({ teamId, name: main, col, phase, time, label: labelForLog });
   if (_log.length > 30) _log.pop();
   renderLog();
+  const heatStr = `H${getHeatForTeam(state, team) || "?"}`;
+  showToast(phase, phase === "enter" ? "ENTRÉE" : "SORTIE", `${heatStr} · ${time}`);
+  showUndoRibbon();
   setTimeout(render, 580);
 }
 window.tapSoon = function tapSoon(teamId, col, label) {
+  if (isParcoursDnf(teamId)) return;
   const st = stFor(teamId);
   const existing = st[col];
   if (existing) {
@@ -581,6 +683,7 @@ function renderLog() {
 window.undoLog = function undoLog(i) {
   const l = _log[i];
   if (!l) return;
+  hideUndoRibbon();
   const map = STAMP_TO_SEG[l.col];
   if (map) {
     let st2 = HyroxStore.loadState();
@@ -590,17 +693,61 @@ window.undoLog = function undoLog(i) {
   _log.splice(i, 1);
   renderLog();
   render();
-  showToast('undo', '↩ Annulé');
+  showToast('undo', '↩ Annulé', '');
 };
 
-function showToast(phase, msg) {
+function showUndoRibbon() {
+  const rib = document.getElementById('undo-ribbon');
+  const btn = document.getElementById('undo-rib-btn');
+  const toast = document.getElementById('toast');
+  if (!rib || !_log.length) return;
+  rib.hidden = false;
+  rib.classList.add('on');
+  if (toast) toast.classList.add('with-undo');
+  _undoDeadline = Date.now() + 10000;
+  if (_undoRibbonTimer) clearInterval(_undoRibbonTimer);
+  const tick = () => {
+    const left = Math.max(0, Math.ceil((_undoDeadline - Date.now()) / 1000));
+    if (btn) btn.textContent = left > 0 ? `↩ Annuler (${left}s)` : '↩ Annuler';
+    if (left <= 0) hideUndoRibbon();
+  };
+  tick();
+  _undoRibbonTimer = setInterval(tick, 400);
+}
+
+function hideUndoRibbon() {
+  const rib = document.getElementById('undo-ribbon');
+  const toast = document.getElementById('toast');
+  if (_undoRibbonTimer) {
+    clearInterval(_undoRibbonTimer);
+    _undoRibbonTimer = null;
+  }
+  if (rib) {
+    rib.classList.remove('on');
+    rib.hidden = true;
+  }
+  if (toast) toast.classList.remove('with-undo');
+}
+
+function showToast(phase, line1, line2) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
+  const l1 = document.getElementById('toast-l1');
+  const l2 = document.getElementById('toast-l2');
+  if (l1) l1.textContent = line1 || '';
+  if (l2) {
+    if (line2) {
+      l2.style.display = 'block';
+      l2.textContent = line2;
+    } else {
+      l2.style.display = 'none';
+      l2.textContent = '';
+    }
+  }
   t.className = phase;
   void t.offsetWidth;
   t.classList.add('show');
   if (_tT) clearTimeout(_tT);
-  _tT = setTimeout(() => t.classList.remove('show'), 2200);
+  _tT = setTimeout(() => t.classList.remove('show'), phase === 'undo' ? 1800 : 3200);
 }
 
 setInterval(() => {
@@ -615,7 +762,6 @@ setInterval(() => {
 
 function cardHTML(r, mode) {
   const a = nextAction(r.id);
-  const { main, partner } = getNameLines(r);
   const st = stFor(r.id);
   const h = getHeatForTeam(state, r);
   const hid = cssId(r.id);
@@ -636,11 +782,8 @@ function cardHTML(r, mode) {
       : '';
     return `<div class="ac state-soon" id="ac-soon-${hid}"${onSoon}>
       <div class="ac-heat">H${h}</div>
-      <div class="ac-names">
-        <div class="ac-n1">${main}</div>
-        ${partner ? `<div class="ac-n2">${partner}</div>` : ''}
-      </div>
-      <div class="ac-right"><span class="ac-action" style="color:var(--blue);background:rgba(122,204,232,.1)">${soonLabel}</span></div>
+      <div class="ac-names">${cardNameHtml(r)}</div>
+      <div class="ac-right"><span class="ac-action" style="color:var(--blue);background:rgba(122,204,232,.2);border-color:rgba(122,204,232,.4);font-size:11px">${soonLabel === 'Entrée' ? 'ENTRÉE' : escHtml(soonLabel)}</span></div>
     </div>`;
   }
   let stateClass = 'state-wait';
@@ -668,7 +811,7 @@ function cardHTML(r, mode) {
     const startVal = st[startCol] || '';
     const startSec = timeToSec(startVal);
     const elapsed = startSec != null ? Math.max(0, nowSec() - startSec) : null;
-    actionHTML = `<span class="ac-action exit">${_cur === 'runs' ? a.label + ' ■' : 'Sortie'}</span>`;
+    actionHTML = `<span class="ac-action exit">${_cur === 'runs' ? a.label + ' · ' : ''}SORTIE</span>`;
     if (elapsed != null) {
       const chronoCls = elapsed < 120 ? 'ac-chrono fast' : 'ac-chrono';
       actionHTML += `<span class="${chronoCls}" data-start="${startSec}" id="ch-${hid}">${fmtChrono(elapsed)}</span>`;
@@ -677,14 +820,11 @@ function cardHTML(r, mode) {
     }
   } else {
     stateClass = 'state-enter';
-    actionHTML = `<span class="ac-action enter">${_cur === 'runs' ? a.label : 'Entrée'}</span>`;
+    actionHTML = `<span class="ac-action enter">${_cur === 'runs' ? a.label + ' · ' : ''}ENTRÉE</span>`;
   }
   return `<div class="ac ${stateClass}" id="ac-${hid}" data-tap-tid="${encodeURIComponent(r.id)}">
     <div class="ac-heat">H${h}</div>
-    <div class="ac-names">
-      <div class="ac-n1">${main}</div>
-      ${partner ? `<div class="ac-n2">${partner}</div>` : ''}
-    </div>
+    <div class="ac-names">${cardNameHtml(r)}</div>
     <div class="ac-right">
       ${actionHTML}
       ${timeStr ? `<div class="ac-time">${timeStr}</div>` : ''}
@@ -718,6 +858,8 @@ async function pull() {
   }
   state = HyroxStore.loadState();
   buildSelect();
+  const uBtn = document.getElementById('undo-rib-btn');
+  if (uBtn) uBtn.addEventListener('click', () => { if (_log[0]) window.undoLog(0); });
   setInterval(pull, 5000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
 })();

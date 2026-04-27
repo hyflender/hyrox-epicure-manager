@@ -288,10 +288,45 @@
         transition: background .15s, color .15s;
       }
       .qs-metcon-btn.active { background: var(--accent); color: #0A0A0A; }
+      /* Encadré DNF — abandon / non terminé */
+      .qs-dnf-box {
+        border: 1px solid rgba(231, 76, 60, 0.35);
+        border-radius: 10px;
+        padding: 12px 14px 14px;
+        margin-bottom: 16px;
+        background: rgba(231, 76, 60, 0.06);
+        transition: border-color .2s, background .2s, box-shadow .2s;
+      }
+      .qs-dnf-box:has(#qs-dnf:checked) {
+        border-color: #e74c3c;
+        background: rgba(231, 76, 60, 0.12);
+        box-shadow: 0 0 0 1px rgba(231, 76, 60, 0.25) inset;
+      }
+      .qs-dnf-box-head {
+        display: flex; align-items: center; gap: 10px;
+        margin-bottom: 8px;
+      }
+      .qs-dnf-badge {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 44px; padding: 4px 8px;
+        font-family: var(--mono); font-size: 12px; font-weight: 800;
+        letter-spacing: .12em; color: #e74c3c;
+        border: 1px solid rgba(231, 76, 60, 0.55);
+        border-radius: 6px; background: rgba(0,0,0,.2);
+      }
+      .qs-dnf-box:has(#qs-dnf:checked) .qs-dnf-badge {
+        background: #e74c3c; color: #fff; border-color: #e74c3c;
+      }
+      .qs-dnf-box-title { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.3; }
+      .qs-dnf-box-hint  { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
       .qs-dnf-row {
         display: flex; align-items: center; gap: 12px;
-        margin-bottom: 18px; font-size: 14px; font-weight: 600;
-        color: var(--muted); cursor: pointer;
+        font-size: 13px; font-weight: 600;
+        color: var(--text);
+        cursor: pointer;
+        margin: 0;
+        padding-top: 4px;
+        border-top: 1px solid rgba(255,255,255,.06);
       }
       .qs-dnf-toggle { position:relative; display:inline-block; width:38px; height:22px; flex-shrink:0; }
       .qs-dnf-toggle input { opacity:0; width:0; height:0; }
@@ -305,6 +340,16 @@
       }
       .qs-dnf-toggle input:checked + .qs-dnf-track { background:#e74c3c; }
       .qs-dnf-toggle input:checked + .qs-dnf-track::before { transform:translateX(16px); }
+      .qs-dnf-plate {
+        border: 1px dashed rgba(231, 76, 60, 0.45);
+        border-radius: 8px;
+        padding: 14px 12px;
+        text-align: center;
+        background: rgba(231, 76, 60, 0.08);
+      }
+      .qs-dnf-plate-kicker { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 4px; }
+      .qs-dnf-plate-val  { font-family: var(--mono); font-size: 18px; font-weight: 800; color: #e74c3c; letter-spacing: .15em; }
+      .qs-dnf-plate-sub  { font-size: 12px; color: var(--muted); margin-top: 6px; }
       .qs-prev { font-size:11px; color:var(--muted); margin-bottom:14px; font-family:var(--mono); }
       .qs-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
     </style>
@@ -771,8 +816,8 @@
         document.getElementById("qs-dnf").checked = false;
         document.getElementById("qs-overlay").classList.add("open");
 
-        athSel.addEventListener("change", qsRefresh);
-        zoneSel.addEventListener("change", qsRefresh);
+        athSel.onchange = qsRefresh;
+        zoneSel.onchange = qsRefresh;
         qsRefresh();
       }
 
@@ -780,8 +825,8 @@
         document.getElementById("qs-overlay").classList.remove("open");
         const athSel  = document.getElementById("qs-athlete");
         const zoneSel = document.getElementById("qs-zone");
-        athSel.removeEventListener("change", qsRefresh);
-        zoneSel.removeEventListener("change", qsRefresh);
+        athSel.onchange = null;
+        zoneSel.onchange = null;
       }
 
       function qsRefresh() {
@@ -812,26 +857,49 @@
           prevEl.textContent = "Aucun score enregistré";
         }
 
-        // Pré-remplir DNF
-        if (existing?.dnf) document.getElementById("qs-dnf").checked = true;
+        // Synchroniser la case DNF uniquement depuis les données (changement athlète / épreuve)
+        document.getElementById("qs-dnf").checked = !!existing?.dnf;
 
         // Champs
         qsRenderInputs(zoneId, zone, existing);
+      }
+
+      function qsEscAttr(s) {
+        return String(s ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/"/g, "&quot;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
       }
 
       function qsRenderInputs(zoneId, zone, existing) {
         const inputsEl = document.getElementById("qs-inputs");
         const dnf = document.getElementById("qs-dnf").checked;
 
-        if (dnf) { inputsEl.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:10px">DNF — pas de score</div>`; return; }
+        if (dnf) {
+          inputsEl.innerHTML = `<div class="qs-dnf-plate" role="status">
+            <div class="qs-dnf-plate-kicker">Enregistrement</div>
+            <div class="qs-dnf-plate-val">DNF</div>
+            <div class="qs-dnf-plate-sub">Non terminé — aucun score chiffré</div>
+          </div>`;
+          return;
+        }
 
         const initVal = existing && !existing.dnf
           ? (existing.performance != null ? String(existing.performance) : (existing.rawValue != null ? String(existing.rawValue) : ""))
           : "";
-        inputsEl.innerHTML = `<div class="qs-field"><label>Score</label><input type="text" id="qs-generic" value="${(initVal || "").replace(/"/g, "&quot;")}" placeholder="—"></div>`;
+        inputsEl.innerHTML = `<div class="qs-field"><label>Score</label><input type="text" id="qs-generic" value="${qsEscAttr(initVal)}" placeholder="—"></div>`;
       }
 
-      function qsToggleDNF() { qsRefresh(); }
+      /** Ne pas appeler qsRefresh ici : il réappliquerait l’ancien DNF depuis `existing` et empêcherait de décocher. */
+      function qsToggleDNF() {
+        const st = HyroxStore.loadState();
+        const athId = document.getElementById("qs-athlete").value;
+        const zoneId = document.getElementById("qs-zone").value;
+        const zone = (st.events || []).find((e) => e.id === zoneId);
+        const existing = (st.scores || []).find((s) => s.teamId === athId && s.eventId === zoneId);
+        qsRenderInputs(zoneId, zone, existing);
+      }
 
       function saveQS() {
         const state  = HyroxStore.loadState();
@@ -922,13 +990,22 @@
         <div id="qs-zone-banner" class="qs-zone-banner" style="display:none"></div>
         <div class="qs-prev" id="qs-prev"></div>
 
-        <!-- DNF toggle -->
-        <div class="qs-dnf-row">
-          <label class="qs-dnf-toggle">
-            <input type="checkbox" id="qs-dnf" onchange="qsToggleDNF()">
-            <span class="qs-dnf-track"></span>
+        <!-- Encadré DNF (non terminé) -->
+        <div class="qs-dnf-box" id="qs-dnf-box">
+          <div class="qs-dnf-box-head">
+            <span class="qs-dnf-badge">DNF</span>
+            <div>
+              <div class="qs-dnf-box-title">L’athlète n’a pas fini l’épreuve</div>
+              <div class="qs-dnf-box-hint">Cochez pour enregistrer un abandon : le classement affichera DNF, sans score chiffré.</div>
+            </div>
+          </div>
+          <label class="qs-dnf-row">
+            <span class="qs-dnf-toggle">
+              <input type="checkbox" id="qs-dnf" onchange="qsToggleDNF()">
+              <span class="qs-dnf-track"></span>
+            </span>
+            <span>Enregistrer en DNF</span>
           </label>
-          <span>DNF / Abandon</span>
         </div>
 
         <!-- Champs dynamiques selon l’épreuve -->

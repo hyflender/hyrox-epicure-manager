@@ -253,6 +253,7 @@ body { font-family:var(--sans); color:var(--text); -webkit-font-smoothing:antial
 }
 .tv-ath-card--prestart {
   border-color: rgba(217,162,59,.35);
+  border-left-color: var(--ath-accent, rgba(217,162,59,.85));
   box-shadow: 0 4px 20px rgba(0,0,0,.32), 0 0 0 1px rgba(217,162,59,.12) inset;
 }
 .tv-ath-timer.tv-ath-prestart .tv-ath-elapsed {
@@ -287,19 +288,19 @@ body { font-family:var(--sans); color:var(--text); -webkit-font-smoothing:antial
   padding:2px 8px;
   border-radius:6px;
   text-transform:uppercase;
-  background:rgba(198,255,0,.1);
-  color:rgba(220,255,140,.95);
-  border:1px solid rgba(198,255,0,.3);
+  color:var(--cat-accent, rgba(220,255,140,.95));
+  border:1px solid color-mix(in srgb, var(--cat-accent, var(--volt)) 40%, transparent);
+  background:color-mix(in srgb, var(--cat-accent, var(--volt)) 12%, transparent);
 }
 .tv-ath-heat {
   font-size:clamp(9px,.8vw,12px);
   font-weight:800;
   font-family:var(--mono);
-  color:var(--volt);
+  color:var(--heat-accent, var(--volt));
   padding:1px 7px;
   border-radius:4px;
-  background:rgba(198,255,0,.08);
-  border:1px solid rgba(198,255,0,.25);
+  border:1px solid color-mix(in srgb, var(--heat-accent, var(--volt)) 28%, transparent);
+  background:color-mix(in srgb, var(--heat-accent, var(--volt)) 10%, transparent);
 }
 .tv-ath-seg-now {
   font-size:clamp(10px,1vw,14px);
@@ -311,7 +312,7 @@ body { font-family:var(--sans); color:var(--text); -webkit-font-smoothing:antial
 }
 .tv-seg-row {
   display:flex;
-  gap:0;
+  gap:2px;
   width:100%;
   align-items:stretch;
 }
@@ -335,21 +336,24 @@ body { font-family:var(--sans); color:var(--text); -webkit-font-smoothing:antial
 .tv-seg-run.done   { background:rgba(198,255,0,.55); border-color:rgba(198,255,0,.5); }
 .tv-seg-atelier.done { background:rgba(45,212,191,.5); border-color:rgba(20,184,166,.55); }
 .tv-seg-run.current   { background:rgba(79,141,232,.75); border-color:var(--seg-cur-run-b); box-shadow:0 0 6px rgba(79,141,232,.4); }
-.tv-seg-atelier.current { background:rgba(143,106,235,.7); border-color:var(--seg-cur-ws-b); box-shadow:0 0 6px rgba(143,106,235,.38); }
-/* Zone Rox (entre deux segments) */
-.tv-seg-rox {
-  flex:0 0 clamp(2px,0.25vw,4px);
-  min-width:2px;
-  align-self:stretch;
-  border-radius:1px;
-  background:rgba(245,158,11,.12);
-  border:1px solid rgba(245,158,11,.3);
-  margin:0 1px;
-  transition:background .2s, border-color .2s;
+/* Atelier courant seul : clignotement (pas toute la carte) */
+.tv-seg-atelier.current {
+  background:rgba(143,106,235,.7);
+  border-color:var(--seg-cur-ws-b);
+  animation: tv-seg-atelier-blink 1.25s ease-in-out infinite;
 }
-.tv-seg-rox.done {
-  background:rgba(245,158,11,.4);
-  border-color:rgba(251,191,36,.55);
+@keyframes tv-seg-atelier-blink {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(143,106,235,.35);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(192,168,250,.85), 0 0 4px rgba(143,106,235,.5);
+    opacity: 0.92;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tv-seg-atelier.current { animation: none; opacity: 1; box-shadow: 0 0 6px rgba(143,106,235,.38); }
 }
 .tv-ath-bot {
   display:flex;
@@ -651,6 +655,8 @@ body { font-family:var(--sans); color:var(--text); -webkit-font-smoothing:antial
 .lb-row-evs span { color:var(--muted); }
 .lb-score { display:flex; flex-direction:column; align-items:flex-end; justify-content:center; flex-shrink:0; gap:2px; min-width:clamp(44px,4.5vw,90px); text-align:right; }
 .lb-chrono { font-family:var(--mono); font-size:clamp(12px,1.2vw,19px); font-weight:800; color:var(--volt); line-height:1.15; white-space:nowrap; }
+.lb-pos.lb-dnf { color:var(--muted); font-size:clamp(10px,1vw,14px); }
+.lb-dnf .lb-chrono--dnf { color:#F87171; font-weight:800; }
 .lb-pts-nested { font-family:var(--mono); font-size:clamp(8px,.7vw,11px); color:var(--muted); font-weight:700; }
 .lb-score.none { color:var(--faint); font-size:clamp(9px,.8vw,12px); }
 .lb-score:not(.none) .lb-chrono:only-child { font-size:clamp(13px,1.35vw,20px); }
@@ -724,8 +730,8 @@ body { font-family:var(--sans); color:var(--text); -webkit-font-smoothing:antial
   animation: none;
 }
 @keyframes tlTileBlink {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(198, 255, 0, 0); }
-  50% { opacity: 0.92; box-shadow: 0 0 12px 0 rgba(198, 255, 0, 0.12); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 transparent; }
+  50% { opacity: 0.92; box-shadow: 0 0 14px 0 color-mix(in srgb, var(--dc, var(--volt)) 28%, transparent); }
 }
 
 @keyframes glowBar { 0%,100%{opacity:1} 50%{opacity:.3} }
@@ -777,7 +783,7 @@ body { font-family:var(--sans); color:var(--text); -webkit-font-smoothing:antial
   overflow:visible;
 }
 #timeline .tl-tile-cat {
-  color:var(--muted);
+  color:var(--div-accent, var(--muted));
   font-weight:700;
   letter-spacing:.04em;
   text-transform:uppercase;
@@ -786,12 +792,12 @@ body { font-family:var(--sans); color:var(--text); -webkit-font-smoothing:antial
 }
 #timeline .tl-tile-heat {
   font-weight:800;
-  color:var(--volt);
+  color:var(--div-accent, var(--volt));
   letter-spacing:.08em;
   padding:1px 5px;
   border-radius:4px;
-  background:rgba(198,255,0,.1);
-  border:1px solid rgba(198,255,0,.25);
+  background:color-mix(in srgb, var(--div-accent, var(--volt)) 12%, transparent);
+  border:1px solid color-mix(in srgb, var(--div-accent, var(--volt)) 30%, transparent);
   flex-shrink:0;
   white-space:nowrap;
 }
@@ -816,7 +822,7 @@ body { font-family:var(--sans); color:var(--text); -webkit-font-smoothing:antial
   white-space:nowrap;
 }
 #timeline .tl-tile-delta strong {
-  color:var(--volt);
+  color:var(--div-accent, var(--volt));
   font-weight:800;
   font-size:1.08em;
 }
@@ -1519,6 +1525,31 @@ function nowMin(){ return HyroxStore.effectiveNowMin(typeof state!=='undefined'?
 function catCls(c){ return c==='Pro'?'cc-pro':'cc-open'; }
 function catColor(c){ return c==='Pro'?'#F87171':'#C6FF00'; }
 
+/**
+ * Accent couleur par division (HyroxStore.rankGroupKey) : Open/Pro, Solo F/H, duos, mixte.
+ * Utilisé : cartes « en course », timeline des départs.
+ */
+function tvDivisionAccent(team) {
+  if (!team) return "#C6FF00";
+  const k = HyroxStore.rankGroupKey(team);
+  const P = {
+    "Open|Solo|Femme": "#E879F9",
+    "Open|Solo|Homme": "#22D3EE",
+    "Pro|Solo|Femme": "#FB7185",
+    "Pro|Solo|Homme": "#60A5FA",
+    "Open|DuoH": "#A78BFA",
+    "Pro|DuoH": "#C4B5FD",
+    "Open|DuoF": "#F472B6",
+    "Pro|DuoF": "#FDA4AF",
+    "Open|Mixte": "#C6FF00",
+  };
+  if (P[k]) return P[k];
+  if (k && k.indexOf("Solo|") >= 0) {
+    return HyroxStore.effectiveCategory(team) === "Pro" ? "#94A3B8" : "#B0B8C4";
+  }
+  return HyroxStore.effectiveCategory(team) === "Pro" ? "#F87171" : "#C6FF00";
+}
+
 function fmtScore(sc, ev){
   if(!sc||sc.dnf) return null;
   const raw=sc.rawValue??sc.performance;
@@ -1608,18 +1639,15 @@ function getEventWindowMap(state, nm){
   return zm;
 }
 
-/** Libellés type parcours Hyrox (8×1 km + 8 stations) pour la jauge 16 segments */
-const TV_SEG_LABELS = [
-  "RUN 1", "SKI", "RUN 2", "PUSH", "RUN 3", "PULL", "RUN 4", "BBJ",
-  "RUN 5", "ROW", "RUN 6", "FARM", "RUN 7", "LUNGE", "RUN 8", "WALLS"
-];
+/** Libellés parcours Hyrox (16 segments) — même ordre que la page Passages */
+const TV_SEG_LABELS = HyroxStore.HYROX_PASSAGE_LABELS;
 
 /** Pairs = course (run), impairs = atelier (grille 16 types Hyrox). */
 function tvSegIsRunIndex(i) {
   return i >= 0 && i < 16 && (i & 1) === 0;
 }
 
-/** Jauge : 16 blocs + 15 intercalaires « zone Rox » (couloir entre seg. i et i+1). */
+/** Jauge : 16 blocs (run / atelier), sans intercalaires « zone Rox ». */
 function buildTvAthleteSegRowHtml(pr) {
   const parts = [];
   for (let i = 0; i < 16; i++) {
@@ -1628,11 +1656,6 @@ function buildTvAthleteSegRowHtml(pr) {
     if (i < pr.filled) c += " done";
     else if (pr.phase === "race" && i === pr.curIdx) c += " current";
     parts.push(`<div class="${c}"></div>`);
-    if (i < 15) {
-      let rox = "tv-seg-rox";
-      if (i < pr.filled) rox += " done";
-      parts.push(`<div class="${rox}" aria-hidden="true"></div>`);
-    }
   }
   return parts.join("");
 }
@@ -1680,8 +1703,8 @@ function _segsHasAnyDep(segs) {
 }
 
 /**
- * Jauge 16 segments : si au moins un passage Rox est saisi, progression réelle
- * (segments terminés = dep valides dès le début), sinon repli sur l’horloge / durée estimée.
+ * Jauge 16 segments : si au moins un passage « End » est saisi, progression par segments
+ * réels (dep valides d’affilée). Sinon, pas d’estimation sur le chrono : affichage RUN 1, 0 %.
  */
 function getHyrox16Progress(athlete, state, nm) {
   const t0 = getAthleteHeatStart(athlete, state);
@@ -1728,18 +1751,12 @@ function getHyrox16Progress(athlete, state, nm) {
     };
   }
 
-  if (nm >= t1) {
-    return { p: 1, label: "ARRIVÉ", filled: 16, elapsed: t1 - t0, curIdx: 15, phase: "done", passageMode: false };
-  }
-  const p = (nm - t0) / (t1 - t0);
-  const filled = Math.min(16, Math.floor(16 * p));
-  const curIdx = Math.min(15, filled);
   return {
-    p,
-    label: TV_SEG_LABELS[curIdx] || "…",
-    filled,
+    p: 0,
+    label: TV_SEG_LABELS[0] || "RUN 1",
+    filled: 0,
     elapsed: nm - t0,
-    curIdx,
+    curIdx: 0,
     phase: "race",
     passageMode: false,
   };
@@ -1747,8 +1764,8 @@ function getHyrox16Progress(athlete, state, nm) {
 
 /**
  * Temps écoulé en secondes sur le segment (run / atelier) courant.
- * Avec passages : depuis Start du segment (heat pour RUN 1) jusqu’à maintenant.
- * Sans passages (estimé) : prorata 1/16 du parcours.
+ * Uniquement avec au moins un « End » saisi (pr.passageMode) : depuis le Start du segment courant.
+ * Sans passages : rien (pas d’estimation).
  */
 function getCurrentSegmentLiveSec(athlete, state, pr) {
   if (!athlete || !pr || pr.phase === "unknown" || pr.phase === "waiting" || pr.phase === "done") {
@@ -1757,7 +1774,6 @@ function getCurrentSegmentLiveSec(athlete, state, pr) {
   const t0 = getAthleteHeatStart(athlete, state);
   const t1 = HyroxStore.getAthleteEndMinutes(athlete, state);
   if (t0 == null || t1 == null) return { sec: null, estimated: false };
-  const nm = HyroxStore.effectiveNowMin(state);
   const now = new Date();
   const nowS = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
   if (pr.passageMode) {
@@ -1777,11 +1793,7 @@ function getCurrentSegmentLiveSec(athlete, state, pr) {
     if (dSec < 0) dSec += 86400;
     return { sec: dSec, estimated: false };
   }
-  if (t1 <= t0) return { sec: null, estimated: true };
-  const w = (t1 - t0) / 16;
-  const segStart = t0 + pr.curIdx * w;
-  if (nm < segStart) return { sec: 0, estimated: true };
-  return { sec: Math.max(0, (nm - segStart) * 60), estimated: true };
+  return { sec: null, estimated: false };
 }
 
 function formatSegmentLiveLine(pr, { sec, estimated }) {
@@ -1802,12 +1814,26 @@ function athleteTvRaceFinished(athlete, state, nm) {
     const lastS = HyroxStore.parsePassageClock(String(segs[15].dep || "").trim());
     return { finished: true, sortT1: lastS != null ? lastS / 60 : t1 };
   }
-  if (!_segsHasAnyDep(segs) && nm >= t1) return { finished: true, sortT1: t1 };
   return { finished: false, sortT1: 0 };
 }
 
 /* ── Grille live (tuiles athlètes + jauge 16 seg.) ────────────── */
 const TV_EN_COURSE_PRE_START_MIN = 5;
+
+/** DNF parcours (Passages) ou abandon sur une épreuve scorée — plus affiché « en course ». */
+function tvTeamIsDnf(state, teamId) {
+  return HyroxStore.getHyroxPassageDnf(state, teamId) || HyroxStore.teamHasDnfScore(state, teamId);
+}
+
+/** Classement live : uniquement arrivés (End mur / parcours terminé) ou DNF — pas pré-départ ni en course. */
+function tvEligibleForLiveLeaderboard(state, team, nm) {
+  if (!team) return false;
+  if (tvTeamIsDnf(state, team.id)) return true;
+  const t0 = getAthleteHeatStart(team, state);
+  if (t0 == null) return false;
+  if (nm < t0) return false;
+  return athleteTvRaceFinished(team, state, nm).finished;
+}
 
 function renderLiveGrid(state) {
   const nm = nowMin();
@@ -1815,6 +1841,7 @@ function renderLiveGrid(state) {
   const enCourse = [];
   const finished = [];
   (state.teams || []).forEach((ath) => {
+    if (tvTeamIsDnf(state, ath.id)) return;
     const t0 = getAthleteHeatStart(ath, state);
     if (t0 == null) return;
     const { finished: isFin, sortT1 } = athleteTvRaceFinished(ath, state, nm);
@@ -1859,6 +1886,7 @@ function renderLiveGrid(state) {
       const segsRow = buildTvAthleteSegRowHtml(pr);
       const name = HyroxStore.formatTeamDisplayName(ath);
       const divLine = HyroxStore.formatTeamDivisionLine(ath);
+      const divAcc = tvDivisionAccent(ath);
       const segLive = getCurrentSegmentLiveSec(ath, state, pr);
       const segLiveText = formatSegmentLiveLine(pr, segLive);
       const segLiveHtml = segLiveText
@@ -1870,7 +1898,7 @@ function renderLiveGrid(state) {
         ? `Dans ${fmtChronoFromMin(t0 - nm)}`
         : fmtChronoFromMin(pr.elapsed);
       const chronoClass = preStart ? " tv-ath-prestart" : "";
-      return `<div class="tv-ath-card${preStart ? " tv-ath-card--prestart" : ""}" style="--ath-accent:var(--volt)" data-t0="${t0}" data-t1="${t1}" data-tid="${ath.id}" data-prestart="${preStart ? "1" : "0"}">
+      return `<div class="tv-ath-card${preStart ? " tv-ath-card--prestart" : ""}" style="--ath-accent:${divAcc};--cat-accent:${divAcc};--heat-accent:${divAcc}" data-t0="${t0}" data-t1="${t1}" data-tid="${ath.id}" data-prestart="${preStart ? "1" : "0"}">
         <div class="tv-ath-top">
           <div class="tv-ath-who">
             <div class="tv-ath-name">${name}</div>
@@ -1920,15 +1948,26 @@ function renderLiveGrid(state) {
 
 /* ── RENDER LEADERBOARD ────────────────────────────────────────── */
 function renderLeaderboard(state){
-  const ranking=_cachedRanking||HyroxStore.getRanking(state);
+  const nmLb = nowMin();
+  const baseRank = _cachedRanking || HyroxStore.getRanking(state);
+  const rawRanking = baseRank.filter((r) =>
+    tvEligibleForLiveLeaderboard(state, r.team, nmLb)
+  );
   const scoredEvs=state.events.filter(e=>e.scored);
   const ORDER=HyroxStore.sortedRankGroupKeys(state);
   const groups={};
-  ranking.forEach(r=>{
+  rawRanking.forEach(r=>{
     const k=HyroxStore.rankGroupKey(r.team);
     if(!groups[k]) groups[k]=[];
     groups[k].push(r);
   });
+
+  const lbEl = document.getElementById("lbScroll");
+  if (lbEl && !rawRanking.length) {
+    lbEl.innerHTML =
+      '<div class="arrival-placeholder" style="padding:18px 14px">Aucun classé pour l’instant (parcours en cours ou heats pas encore partis).</div>';
+    return;
+  }
 
   // Qui est dans un créneau planning actif (si des `events` existent)
   const nm=nowMin();
@@ -1943,22 +1982,48 @@ function renderLeaderboard(state){
     const r0=groups[k][0];
     const col=catColor(HyroxStore.effectiveCategory(r0?.team));
     const hdr=HyroxStore.formatTeamDivisionLine(r0?.team);
-    const rowList=[...groups[k]].sort((a,b)=>{
+    const gk = groups[k];
+    const byChrono = (a,b)=>{
       const sa=HyroxStore.getHyroxGlobalTimeSec(state, a.team.id);
       const sb=HyroxStore.getHyroxGlobalTimeSec(state, b.team.id);
       if (sa != null && sb != null) return sa - sb;
       if (sa != null) return -1;
       if (sb != null) return 1;
       return 0;
-    });
-    const hasAnyChrono=rowList.some((x)=>HyroxStore.getHyroxGlobalTimeSec(state, x.team.id) != null);
+    };
+    const byName = (a,b) =>
+      (a.team?.lastName || a.team?.name || "").localeCompare(
+        b.team?.lastName || b.team?.name || "",
+        "fr",
+        { sensitivity: "base" }
+      );
+    const nonDnf = gk.filter((r) => !tvTeamIsDnf(state, r.team.id)).sort(byChrono);
+    const dnfList = gk.filter((r) => tvTeamIsDnf(state, r.team.id)).sort(byName);
+    const rowList = [...nonDnf, ...dnfList];
+    const hasAnyChrono=rowList.some(
+      (x) =>
+        !tvTeamIsDnf(state, x.team.id) &&
+        HyroxStore.getHyroxGlobalTimeSec(state, x.team.id) != null
+    );
     const hasPointsCompetition=scoredEvs.length>0;
     const usePodiumStyle=hasAnyChrono || hasPointsCompetition;
-    const rows=rowList.map((r,i)=>{
+    const rows=rowList.map((r)=>{
+      const dnf = tvTeamIsDnf(state, r.team.id);
+      const rankPos = dnf ? -1 : nonDnf.findIndex((x) => x.teamId === r.teamId);
       const scored=r.scoredCount>0;
       const tSec=HyroxStore.getHyroxGlobalTimeSec(state, r.team.id);
-      const pc=usePodiumStyle?(i===0?'p1':i===1?'p2':i===2?'p3':'pn'):'pn';
-      const medal=usePodiumStyle && i<3?['🥇','🥈','🥉'][i]:(i+1);
+      let pc = "pn";
+      let medal;
+      if (dnf) {
+        medal = "—";
+        pc = "pn lb-dnf";
+      } else if (usePodiumStyle) {
+        pc = rankPos === 0 ? "p1" : rankPos === 1 ? "p2" : rankPos === 2 ? "p3" : "pn";
+        medal =
+          rankPos < 3 ? ["🥇", "🥈", "🥉"][rankPos] : String(rankPos + 1);
+      } else {
+        medal = String(rankPos + 1);
+      }
       const detail=scoredEvs.map(ev=>{
         const er=r.eventRanks.find(x=>x.eventId===ev.id);
         return `<span title="${ev.name}">${ZM[ev.id]?.icon||'•'} ${er?.rank!=null?'#'+er.rank:'—'}</span>`;
@@ -1969,7 +2034,9 @@ function renderLeaderboard(state){
         ? `<span style="font-size:clamp(8px,.75vw,11px);color:${creneauHint.color};font-family:var(--mono);margin-left:auto;padding:1px 6px;border:1px solid ${creneauHint.color}44;border-radius:4px;white-space:nowrap;flex-shrink:0">${creneauHint.icon}</span>`
         : '';
       let scoreHtml='';
-      if (tSec != null) {
+      if (dnf) {
+        scoreHtml = `<div class="lb-chrono lb-chrono--dnf">DNF</div>`;
+      } else if (tSec != null) {
         scoreHtml=`<div class="lb-chrono">${HyroxStore.formatHyroxRaceDuration(tSec)}</div>`;
         if (scored && hasPointsCompetition) scoreHtml+=`<div class="lb-pts-nested">${r.total} pts</div>`;
       } else if (scored && hasPointsCompetition) {
@@ -1977,16 +2044,21 @@ function renderLeaderboard(state){
       } else {
         scoreHtml='—';
       }
-      const scoreCls=(tSec==null && !(scored && hasPointsCompetition))?'lb-score none':'lb-score';
+      const scoreCls = dnf
+        ? "lb-score"
+        : tSec==null && !(scored && hasPointsCompetition)
+          ? "lb-score none"
+          : "lb-score";
+      const rowDnf = dnf ? " lb-dnf" : "";
       return `
-        <div class="lb-row">
+        <div class="lb-row${rowDnf}">
           <div class="lb-pos ${pc}">${medal}</div>
           <div class="lb-row-name">
             <div class="lb-row-last" style="white-space:normal;line-height:1.15">${HyroxStore.formatTeamDisplayName(r.team)}</div>
             <div class="lb-row-evs">${detail}</div>
           </div>
           ${creneauBadge}
-          <div class="${scoreCls}" style="margin-left:${creneauHint?'6px':'auto'}" title="Temps total : départ heat → fin mur (passages)">${scoreHtml}</div>
+          <div class="${scoreCls}" style="margin-left:${creneauHint?'6px':'auto'}" title="${dnf ? "Abandon (DNF)" : "Temps total : départ heat → fin mur (passages)"}">${scoreHtml}</div>
         </div>`;
     }).join('');
     return `
@@ -2024,7 +2096,6 @@ function renderTimeline(state) {
     }
   }
 
-  const dcDep = "#C6FF00";
   let html = "";
   let nowInserted = false;
 
@@ -2037,9 +2108,9 @@ function renderTimeline(state) {
     const minToDep = e.heatStart - nm;
     const isSoon = minToDep > 0 && minToDep <= 10;
     const cls = isSoon ? " soon" : "";
-    const borderC = dcDep;
 
     const a = e.athlete;
+    const acc = a ? tvDivisionAccent(a) : "#C6FF00";
     const name = a
       ? HyroxStore.formatTeamDisplayName(a)
       : "—";
@@ -2052,15 +2123,15 @@ function renderTimeline(state) {
         : "";
 
     html += `
-      <div class="dep-card dep-card--tl${cls}" style="--dc:${dcDep};border-top-color:${borderC};">
+      <div class="dep-card dep-card--tl${cls}" style="--dc:${acc};--div-accent:${acc};border-top-color:${acc};">
         <div class="tl-tile">
           <div class="tl-tile-name">${name}</div>
           <div class="tl-tile-meta">
-            <span class="tl-tile-cat ${a ? catCls(a.category) : ""}">${catLine}</span>
+            <span class="tl-tile-cat">${catLine}</span>
             <span class="tl-tile-heat">${heatLabel}</span>
           </div>
           <div class="tl-tile-dep">
-            <span class="dep-time" style="color:${dcDep}">${e.startTime}</span>${deltaLine}
+            <span class="dep-time" style="color:${acc}">${e.startTime}</span>${deltaLine}
           </div>
         </div>
       </div>`;
@@ -2320,6 +2391,8 @@ function startLiveScrollers(){
 let _depTimer = null;
 const _depShown = new Set();
 let _tvAudioCtx = null;
+let _depAudioFadeRaf = null;
+const _DEP_AUDIO_FADE_IN_MS = 1000;
 
 function getTvAudioContext() {
   if (_tvAudioCtx) return _tvAudioCtx;
@@ -2363,12 +2436,40 @@ function _playOneBeep(frequency, durationSec, gain) {
   o.stop(t0 + d + 0.02);
 }
 /** Piste 10s (hyflender.github.io) — démarrage 1 s avant l’affichage « 10 » (dès 11 s restants) */
+function _stopDepCountdownAudioFade() {
+  if (_depAudioFadeRaf) {
+    cancelAnimationFrame(_depAudioFadeRaf);
+    _depAudioFadeRaf = null;
+  }
+}
+function _startDepCountdownAudioFadeIn(a) {
+  _stopDepCountdownAudioFade();
+  a.volume = 0;
+  const t0 = performance.now();
+  function step(now) {
+    if (!a || a.paused) {
+      _depAudioFadeRaf = null;
+      return;
+    }
+    const u = Math.min(1, (now - t0) / _DEP_AUDIO_FADE_IN_MS);
+    a.volume = u;
+    if (u < 1) {
+      _depAudioFadeRaf = requestAnimationFrame(step);
+    } else {
+      _depAudioFadeRaf = null;
+      a.volume = 1;
+    }
+  }
+  _depAudioFadeRaf = requestAnimationFrame(step);
+}
 function _stopDepCountdownMp3() {
   const a = document.getElementById("dep-countdown-audio");
+  _stopDepCountdownAudioFade();
   if (!a) return;
   try {
     a.pause();
     a.currentTime = 0;
+    a.volume = 1;
   } catch (_) {}
 }
 function _startDepCountdownAudio(secsRemaining) {
@@ -2386,8 +2487,16 @@ function _startDepCountdownAudio(secsRemaining) {
       } else {
         a.currentTime = Math.max(0, 11 - secsRemaining);
       }
+      a.volume = 0;
       const p = a.play();
-      if (p && typeof p.then === "function") p.catch(() => {});
+      const onPlay = () => {
+        _startDepCountdownAudioFadeIn(a);
+      };
+      if (p && typeof p.then === "function") {
+        p.then(onPlay).catch(() => {});
+      } else {
+        onPlay();
+      }
     } catch (_) {}
   };
   if (a.readyState >= 1) go();
@@ -2648,6 +2757,22 @@ function processArrivalQueue() {
   }
   _arrivalShowing = true;
   showArrivalPopup(ath);
+}
+
+/**
+ * Après chargement cloud / F5 : marque toutes les arrivées déjà connues comme « déjà notifiées »
+ * pour ne pas rejouer les popups (le 1er tickClock tourne souvent avant l’état réel).
+ */
+function suppressArrivalPopupsForCurrentFinishes() {
+  if (!state) return;
+  const nm = nowMin();
+  (state.teams || []).forEach((ath) => {
+    const t0 = getAthleteHeatStart(ath, state);
+    if (t0 == null) return;
+    if (athleteTvRaceFinished(ath, state, nm).finished) _arrivalPopped.add(ath.id);
+  });
+  _arrivalInit = true;
+  _arrivalQueue.length = 0;
 }
 
 function checkArrivalPopups() {
@@ -3208,7 +3333,13 @@ async function init(){
       // En cas de timeout, le pull initial peut encore finir en arrière-plan
       if (e && e.message === 'cloud-timeout') {
         HyroxStore.pullRemote()
-          .then((next) => { state = next; const h = document.getElementById('hdrSync'); if (h) h.textContent = 'Cloud · OK'; render(); })
+          .then((next) => {
+            state = next;
+            const h = document.getElementById('hdrSync');
+            if (h) h.textContent = 'Cloud · OK';
+            suppressArrivalPopupsForCurrentFinishes();
+            render();
+          })
           .catch(() => {});
       }
     }
@@ -3251,6 +3382,7 @@ async function init(){
     }, 600);
   }
 
+  suppressArrivalPopupsForCurrentFinishes();
   render();
 
   setInterval(async()=>{
@@ -3271,10 +3403,14 @@ async function init(){
 
 window.addEventListener('hyrox:remote-sync', e=>{
   if(e.detail.status!=='success') return;
-  const next = HyroxStore.loadState();
-  checkNewScores(next);
-  state = next;
-  render();
+  /* loadState() = cache de CET onglet : après un push depuis scores.html, il faut pull pour lire le cloud. */
+  HyroxStore.pullRemote()
+    .then((next) => {
+      checkNewScores(next);
+      state = next;
+      render();
+    })
+    .catch(() => {});
 });
 window.addEventListener('DOMContentLoaded', init);
 </script>
