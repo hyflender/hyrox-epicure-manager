@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hyrox Epicure — Choisir une compétition</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <link rel="stylesheet" href="./assets/css/styles.css" />
+    <link rel="stylesheet" href="./assets/css/admin-bootstrap.css" />
+    <style>
+      .pick-wrap { max-width: 520px; margin: 0 auto; padding: 2rem 1rem 3rem; }
+      .pick-title { font-weight: 900; letter-spacing: 0.04em; margin-bottom: 0.75rem; }
+      .pick-hint { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+      .pick-list { display: flex; flex-direction: column; gap: 0.65rem; }
+      .pick-item {
+        display: block; text-align: left; width: 100%;
+        padding: 0.95rem 1rem; border-radius: 12px;
+        border: 1px solid var(--border); background: var(--card); color: var(--text);
+        font-family: var(--mono); font-size: 0.9rem; cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+      }
+      .pick-item:hover { border-color: var(--accent-border); background: rgba(198,255,0,.06); }
+      .pick-item .sub { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+      #pick-status { font-size: 0.82rem; color: var(--muted); min-height: 1.5em; }
+      .pick-manual { margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+    </style>
+  </head>
+  <body>
+    <div class="pick-wrap">
+      <p class="font-monospace small text-muted text-uppercase letter-spacing-2 mb-1">Hyrox Epicure</p>
+      <h1 class="pick-title">Choisir une compétition</h1>
+      <p class="pick-hint">Sélection issue du cloud Supabase (même source que l’admin). Tu seras renvoyé vers la page demandée avec <code>?comp=</code>.</p>
+      <p id="pick-status">Connexion au cloud…</p>
+      <div id="pick-list" class="pick-list" hidden></div>
+      <div class="pick-manual">
+        <label for="pick-slug-manual" class="form-label small text-muted mb-1">Ou saisir l’identifiant (slug)</label>
+        <div class="input-group">
+          <input type="text" id="pick-slug-manual" class="form-control bg-dark border-secondary text-light" placeholder="ex. hyrox-epicure-2026" autocomplete="off" />
+          <button type="button" class="btn btn-outline-secondary" id="pick-manual-btn">Valider</button>
+        </div>
+      </div>
+      <p class="mt-4 mb-0 text-center"><a href="./index.html" class="text-secondary small">← Accueil</a></p>
+    </div>
+    <script src="./assets/js/data.js"></script>
+    <script>
+      function navigateWithComp(slugRaw) {
+        const safe = HyroxStore.sanitizeCompetitionRef(slugRaw);
+        if (!safe) {
+          document.getElementById("pick-status").textContent = "Identifiant invalide.";
+          return;
+        }
+        const q = new URLSearchParams(window.location.search || "");
+        const rawRet = q.get("return");
+        try {
+          let target;
+          if (!rawRet) {
+            target = new URL("./portail.html", window.location.href);
+          } else {
+            target = new URL(rawRet, window.location.href);
+            if ((target.pathname || "").split("/").pop().toLowerCase() === "choix-competition.html") {
+              target = new URL("./portail.html", window.location.href);
+            }
+          }
+          target.searchParams.set("comp", safe);
+          window.location.href = target.href;
+        } catch (_) {
+          window.location.href = "./portail.html?comp=" + encodeURIComponent(safe);
+        }
+      }
+
+      async function loadList() {
+        const statusEl = document.getElementById("pick-status");
+        const listEl = document.getElementById("pick-list");
+        try {
+          await HyroxStore.whenCloudReady();
+          const items = await HyroxStore.listCompetitions();
+          statusEl.textContent = "";
+          if (!items.length) {
+            statusEl.textContent = "Aucune ligne « hyrox-* » trouvée. Crée une compétition depuis l’admin ou saisis l’identifiant ci‑dessous.";
+            listEl.hidden = true;
+            return;
+          }
+          listEl.hidden = false;
+          listEl.innerHTML = items
+            .map((row) => {
+              const dt = row.updatedAt
+                ? new Date(row.updatedAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })
+                : "";
+              return `
+            <button type="button" class="pick-item" data-ref="${encodeURIComponent(row.id)}">
+              <span>${HyroxStore.sanitizeCompetitionRef(row.id)}</span>
+              ${dt ? `<div class="sub">Dernière maj. ${dt}</div>` : ""}
+            </button>`;
+            })
+            .join("");
+          listEl.querySelectorAll(".pick-item").forEach((btn) => {
+            btn.addEventListener("click", () => navigateWithComp(decodeURIComponent(btn.getAttribute("data-ref") || "")));
+          });
+        } catch (e) {
+          statusEl.textContent = "Erreur : " + (e.message || e) + " — tu peux quand même saisir un slug ci‑dessous.";
+          listEl.hidden = true;
+        }
+      }
+
+      document.getElementById("pick-manual-btn").addEventListener("click", () => {
+        const v = document.getElementById("pick-slug-manual").value;
+        navigateWithComp(v);
+      });
+      document.getElementById("pick-slug-manual").addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          document.getElementById("pick-manual-btn").click();
+        }
+      });
+
+      loadList();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+  </body>
+</html>

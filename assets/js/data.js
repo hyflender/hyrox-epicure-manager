@@ -274,6 +274,8 @@ function redirectToCompetitionPickerIfUrlMissingComp() {
     const leaf = (window.location.pathname.split("/").pop() || "").toLowerCase();
     if (leaf === "choix-competition.html") return false;
     if (getCompetitionRefFromUrl()) return false;
+    /** Déjà choisi dans cet onglet (session) : pas boucler vers la page de choix. */
+    if (getEffectiveCompetitionRef()) return false;
     window.location.replace(
       "choix-competition.html?return=" +
         encodeURIComponent(
