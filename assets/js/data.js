@@ -314,6 +314,47 @@ function scheduleAutoPush(stateSnapshot) {
   }, AUTO_PUSH_DELAY_MS);
 }
 
+/** Une seule valeur arr/dep pour push : garder tout ce qui existe ; si deux saisies différentes, prendre le plus « tard » (lexicographique sur hh:mm:ss du même jour). */
+function mergePassageTimeCell(a, b) {
+  const sa = String(a ?? "").trim();
+  const sb = String(b ?? "").trim();
+  if (!sa) return sb;
+  if (!sb) return sa;
+  if (sa === sb) return sa;
+  return sa > sb ? sa : sb;
+}
+
+/** Fusion passages Hyrox : aucun pointage perdu lorsque deux juges écrivent quasi en même temps. */
+function mergeHyroxPassagesForPush(remoteMap, localMap) {
+  const out = {};
+  const ids = new Set([
+    ...Object.keys(remoteMap || {}),
+    ...Object.keys(localMap || {}),
+  ]);
+  for (const teamId of ids) {
+    const r = remoteMap?.[teamId];
+    const l = localMap?.[teamId];
+    if (!r?.segments && !l?.segments) {
+      if (r || l) out[teamId] = l || r;
+      continue;
+    }
+    const segsR = r?.segments || [];
+    const segsL = l?.segments || [];
+    const segments = [];
+    for (let i = 0; i < 16; i++) {
+      segments.push({
+        arr: mergePassageTimeCell(segsR[i]?.arr, segsL[i]?.arr),
+        dep: mergePassageTimeCell(segsR[i]?.dep, segsL[i]?.dep),
+      });
+    }
+    out[teamId] = {
+      segments,
+      dnf: !!(r?.dnf || l?.dnf),
+    };
+  }
+  return out;
+}
+
 function normalizeState(rawState) {
   const incoming = rawState || {};
   const state = {
@@ -392,7 +433,40 @@ async function pushRemote(stateArg) {
   if (!cfg.url || !cfg.anonKey) {
     throw new Error("Config Supabase incomplète (URL/Anon key).");
   }
-  const state = normalizeState(stateArg || stateCache || defaultState);
+  const local = normalizeState(stateArg || stateCache || defaultState);
+
+  let remoteState = null;
+  try {
+    const id = cfg.projectRef || "default";
+    const res = await fetch(
+      `${cfg.url}/rest/v1/competition_states?id=eq.${encodeURIComponent(id)}&select=state&limit=1`,
+      {
+        method: "GET",
+        headers: {
+          apikey: cfg.anonKey,
+          Authorization: `Bearer ${cfg.anonKey}`,
+        },
+      }
+    );
+    if (res.ok) {
+      const rows = await res.json();
+      if (rows.length && rows[0].state) {
+        remoteState = normalizeState(rows[0].state || {});
+      }
+    }
+  } catch (e) {
+    console.warn("pushRemote: lecture serveur pour fusion passages", e);
+  }
+
+  let merged = local;
+  if (remoteState) {
+    merged = normalizeState({
+      ...local,
+      hyroxPassages: mergeHyroxPassagesForPush(remoteState.hyroxPassages || {}, local.hyroxPassages || {}),
+    });
+  }
+
+  const state = merged;
   const payload = {
     id: cfg.projectRef || "default",
     state: state,
@@ -989,6 +1063,31 @@ function getTeamPassages(state, teamId) {
   return state.hyroxPassages[teamId].segments;
 }
 
+/**
+ * Fusionne les passages déjà enregistrés dans le cache canonique pour cet athlète
+ * (autre juge / onglet / dernier save) dans `state`, sans écraser une case déjà remplie localement.
+ * Utilisé avant chaque saisie non vide pour limiter les courses entre pointages.
+ */
+function mergeHyroxPassagesForTeamFromCache(state, teamId) {
+  if (!teamId || !stateCache?.hyroxPassages?.[teamId]?.segments) return;
+  const cached = stateCache.hyroxPassages[teamId];
+  const segs = getTeamPassages(state, teamId);
+  const cs = cached.segments;
+  for (let i = 0; i < 16; i++) {
+    if (!cs[i]) continue;
+    if (!segs[i]) segs[i] = { arr: "", dep: "" };
+    const la = String(segs[i].arr || "").trim();
+    const lb = String(cs[i].arr || "").trim();
+    const lc = String(segs[i].dep || "").trim();
+    const ld = String(cs[i].dep || "").trim();
+    segs[i].arr = la || lb;
+    segs[i].dep = lc || ld;
+  }
+  if (state.hyroxPassages?.[teamId] && cached.dnf === true) {
+    state.hyroxPassages[teamId].dnf = true;
+  }
+}
+
 /** Abandon parcours (passages) — coché depuis scores.html, distinct du DNF des épreuves scorées. */
 function getHyroxPassageDnf(state, teamId) {
   const e = state.hyroxPassages?.[teamId];
@@ -1028,6 +1127,7 @@ function syncHyroxPassageRun1Starts(state) {
 
 function setPassageField(state, teamId, segIndex, field, value) {
   if (field !== "arr" && field !== "dep") return;
+  const v = value == null ? "" : String(value).trim();
   const segs = getTeamPassages(state, teamId);
   if (!segs[segIndex]) segs[segIndex] = { arr: "", dep: "" };
   if (field === "arr" && segIndex === 0) {
@@ -1035,7 +1135,10 @@ function setPassageField(state, teamId, segIndex, field, value) {
     if (t) segs[0].arr = t;
     return;
   }
-  segs[segIndex][field] = value == null ? "" : String(value).trim();
+  if (v) {
+    mergeHyroxPassagesForTeamFromCache(state, teamId);
+  }
+  segs[segIndex][field] = v;
   const t0 = getHeatStartClockString(state, teamId);
   if (t0) segs[0].arr = t0;
 }

@@ -594,20 +594,30 @@ window.tap = function tap(teamId) {
     _pending = { teamId, col: a.col, phase: a.phase };
     document.getElementById('modal').classList.add('show');
   } else {
-    doStamp(teamId, a.col, a.phase);
+    void doStamp(teamId, a.col, a.phase);
   }
 };
 
-function doStamp(teamId, col, phase) {
+async function doStamp(teamId, col, phase) {
   if (isParcoursDnf(teamId)) return;
   if (col === 'start_run_1') return;
   const time = nowPassageString();
   const map = STAMP_TO_SEG[col];
   if (!map) { console.warn('col inconnue', col); return; }
   const [segIndex, field] = map;
+  try {
+    await HyroxStore.pullRemote();
+  } catch (e) {
+    console.warn(e);
+  }
   let st2 = HyroxStore.loadState();
   HyroxStore.setPassageField(st2, teamId, segIndex, field, time);
   state = HyroxStore.saveState(st2);
+  try {
+    await HyroxStore.pushRemote(state);
+  } catch (e) {
+    console.warn(e);
+  }
   const team = state.teams.find(t => t.id === teamId);
   const { main } = getNameLines(team || {});
   const a = nextAction(teamId);
@@ -628,30 +638,32 @@ function doStamp(teamId, col, phase) {
   showUndoRibbon();
   setTimeout(render, 580);
 }
+/** Tap « En approche » : un seul pointage (entrée affichée), sans enchaîner ni compléter d’autres cases. */
 window.tapSoon = function tapSoon(teamId, col, label) {
   if (isParcoursDnf(teamId)) return;
   const st = stFor(teamId);
   const existing = st[col];
   if (existing) {
-    const team = state.teams.find(t => t.id === teamId);
+    const team = state.teams.find((t) => t.id === teamId);
     const { main } = getNameLines(team || {});
-    document.getElementById('ml').textContent = 'Déjà pointé — Écraser ?';
-    document.getElementById('ml').className = 'ml enter';
-    document.getElementById('mn').textContent = `${main} (H${getHeatForTeam(state, team) || '?'})`;
-    document.getElementById('mp').textContent = `Pointé à ${existing}`;
-    document.getElementById('mgo').className = 'mbtn go enter';
-    _pending = { teamId, col, phase: 'enter' };
-    document.getElementById('modal').classList.add('show');
-  } else {
-    doStamp(teamId, col, 'enter');
+    document.getElementById("ml").textContent = "Déjà pointé — Écraser ?";
+    document.getElementById("ml").className = "ml enter";
+    document.getElementById("mn").textContent = `${main} (H${getHeatForTeam(state, team) || "?"})`;
+    document.getElementById("mp").textContent = `Pointé à ${existing}`;
+    document.getElementById("mgo").className = "mbtn go enter";
+    _pending = { teamId, col, phase: "enter" };
+    document.getElementById("modal").classList.add("show");
+    return;
   }
+  void doStamp(teamId, col, "enter");
 };
 
-function confirmOverwrite() {
+async function confirmOverwrite() {
   document.getElementById('modal').classList.remove('show');
   if (_pending) {
-    doStamp(_pending.teamId, _pending.col, _pending.phase);
+    const p = _pending;
     _pending = null;
+    await doStamp(p.teamId, p.col, p.phase);
   }
 }
 function closeModal() {
