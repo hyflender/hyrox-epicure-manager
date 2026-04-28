@@ -314,14 +314,17 @@ function scheduleAutoPush(stateSnapshot) {
   }, AUTO_PUSH_DELAY_MS);
 }
 
-/** Une seule valeur arr/dep pour push : garder tout ce qui existe ; si deux saisies différentes, prendre le plus « tard » (lexicographique sur hh:mm:ss du même jour). */
-function mergePassageTimeCell(a, b) {
-  const sa = String(a ?? "").trim();
-  const sb = String(b ?? "").trim();
-  if (!sa) return sb;
-  if (!sb) return sa;
-  if (sa === sb) return sa;
-  return sa > sb ? sa : sb;
+/**
+ * Fusion d'une cellule arr/dep lors du push.
+ * - Une valeur locale non vide prévaut (nouvelle saisie / juge).
+ * - Une valeur locale vide signifie effacement utilisateur → ne pas réappliquer l'ancienne valeur distante (bug page Passages).
+ */
+function mergePassageTimeCell(remoteVal, localVal) {
+  const r = String(remoteVal ?? "").trim();
+  const l = String(localVal ?? "").trim();
+  if (r === l) return r;
+  if (l !== "") return l;
+  return "";
 }
 
 /** Fusion passages Hyrox : aucun pointage perdu lorsque deux juges écrivent quasi en même temps. */
