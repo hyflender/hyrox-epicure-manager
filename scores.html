@@ -117,7 +117,7 @@
       <h2 class="pass-h2">Passages &amp; temps Rox (Hyrox)</h2>
       <p class="muted" style="font-size:12px;margin-bottom:10px;max-width:900px">
         Le <strong>Start</strong> du <strong>RUN 1</strong> est l’<strong>heure de départ du heat</strong> (planning) — non modifiable. Saisis <strong>Start</strong> et <strong>End</strong> de chaque segment au format
-        <strong>HH:MM</strong> ou <strong>HH:MM:SS</strong> (heure du jour). La colonne <strong>Δ</strong> = <strong>temps de zone Rox</strong> : entre la <strong>fin</strong> du segment (End) et le <strong>début</strong> du segment suivant (ex. fin de run → début atelier, ou fin d’atelier → début du run suivant). Dernière ligne : pas de segment suivant (—).
+        <strong>HH:MM</strong> ou <strong>HH:MM:SS</strong> (heure du jour). La colonne <strong>Δ</strong> = <strong>temps de zone Rox</strong> entre la fin du segment (End) et le début du segment suivant chronologique. L’<strong>ordre de passage des catégories</strong> pour les heats (et l’ordonnancement des lignes ici) se règle dans <strong>Paramètres</strong> (admin, ordre des catégories).
         Coche <strong>DNF</strong> si l’athlète n’a pas terminé le parcours : la saisie des passages est alors désactivée pour cette ligne (stocké avec les passages, sync cloud).
         Le bouton <strong>Effacer</strong> sur chaque ligne remet à zéro uniquement les passages de cet athlète (et le DNF de la ligne).
       </p>
@@ -223,9 +223,7 @@
 
     /** Lit la grille telle qu’affichée (y compris saisie en cours) pour un athlète. */
     function readPassageSegmentsFromDom(teamId) {
-      const table = document.getElementById("passage-table");
-      if (!table) return Array.from({ length: 16 }, () => ({ arr: "", dep: "" }));
-      const dep0In = table.querySelector(`input.pass-inp[data-team-id="${teamId}"][data-seg="0"][data-f="dep"]`);
+      const dep0In = document.querySelector(`input.pass-inp[data-team-id="${teamId}"][data-seg="0"][data-f="dep"]`);
       const tr = dep0In?.closest("tr");
       const arr0 = (tr?.getAttribute("data-heat-start") || "").trim();
       const segs = [];
@@ -233,8 +231,8 @@
         if (i === 0) {
           segs.push({ arr: arr0, dep: (dep0In?.value || "").trim() });
         } else {
-          const aIn = table.querySelector(`input.pass-inp[data-team-id="${teamId}"][data-seg="${i}"][data-f="arr"]`);
-          const dIn = table.querySelector(`input.pass-inp[data-team-id="${teamId}"][data-seg="${i}"][data-f="dep"]`);
+          const aIn = document.querySelector(`input.pass-inp[data-team-id="${teamId}"][data-seg="${i}"][data-f="arr"]`);
+          const dIn = document.querySelector(`input.pass-inp[data-team-id="${teamId}"][data-seg="${i}"][data-f="dep"]`);
           segs.push({
             arr: (aIn?.value || "").trim(),
             dep: (dIn?.value || "").trim(),
@@ -277,10 +275,12 @@
       </tr><tr>
         ${L.map(() => '<th class="sub-h">Start</th><th class="sub-h">End</th><th class="sub-h r" title="Zone Rox : fin segment → début du suivant">Δ</th>').join("")}
       </tr>`;
-      const sorted = [...state.teams].sort(HyroxStore.compareAthletes);
+      const sorted = [...state.teams].sort((a, b) => HyroxStore.compareAthletes(a, b, state));
       const schedule = HyroxStore.buildHeatSchedule(state);
       const heatMap = {};
-      schedule.forEach((h) => h.athletes.forEach((a) => { heatMap[a.id] = h.heat; }));
+      schedule.forEach((h) => h.athletes.forEach((a) => {
+        heatMap[a.id] = h.heat;
+      }));
       if (!sorted.length) {
         body.innerHTML = `<tr><td colspan="${5 + 16 * 3}" style="text-align:center;padding:24px;color:var(--muted)">Aucun athlète enregistré.</td></tr>`;
         return;
@@ -294,7 +294,8 @@
           const line = escPass(HyroxStore.formatTeamDivisionLine(team));
           const disp = escPass(HyroxStore.formatTeamDisplayName(team));
           const h = heatMap[team.id] !== undefined ? heatMap[team.id] : "—";
-          const heat0 = escPass(HyroxStore.getHeatStartClockString(state, team.id) || "");
+          const rawHeat = HyroxStore.getHeatStartClockString(state, team.id) || "";
+          const heat0 = escPass(rawHeat);
           const cells = segs
             .map((seg, i) => {
               const a = seg.arr != null ? String(seg.arr) : "";

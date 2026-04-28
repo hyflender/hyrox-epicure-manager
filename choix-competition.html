@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Choisir une compétition — Hyrox Epicure</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <link rel="stylesheet" href="./assets/css/styles.css" />
+    <link rel="stylesheet" href="./assets/css/admin-bootstrap.css" />
+    <style>
+      .pick-wrap {
+        min-height: calc(100vh - 24px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 1.5rem 1rem calc(1.5rem + env(safe-area-inset-bottom, 0));
+      }
+      .pick-wrap h1 {
+        font-size: clamp(1.2rem, 4vw, 1.65rem);
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        margin-bottom: 0.5rem;
+      }
+      .pick-hint {
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin-bottom: 1.25rem;
+        line-height: 1.45;
+      }
+      .pick-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .pick-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+        padding: 16px 18px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text);
+        font-weight: 700;
+        font-size: 1rem;
+        letter-spacing: 0.06em;
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
+      }
+      .pick-btn:hover {
+        border-color: var(--accent-border);
+        background: rgba(198, 255, 0, 0.06);
+      }
+      .pick-btn:active {
+        transform: scale(0.99);
+      }
+      .pick-btn .id {
+        font-family: var(--mono);
+        font-size: 1rem;
+        word-break: break-all;
+      }
+      .pick-btn .meta {
+        font-size: 0.75rem;
+        font-family: var(--mono);
+        color: var(--muted);
+        font-weight: 500;
+        margin-top: 4px;
+      }
+      .pick-back {
+        margin-top: 2rem;
+        font-size: 0.85rem;
+      }
+      .pick-error {
+        color: #f87171;
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="pick-wrap">
+      <h1>Compétition Hyrox</h1>
+      <p class="pick-hint" id="pick-hint">Connexion au cloud…</p>
+      <div class="pick-list" id="pick-list"></div>
+      <p class="pick-back text-muted text-center mb-0">
+        <a href="./index.html" class="text-secondary">← Retour accueil</a>
+      </p>
+    </div>
+    <script src="./assets/js/data.js"></script>
+    <script>
+      (async function () {
+        const hint = document.getElementById("pick-hint");
+        const list = document.getElementById("pick-list");
+
+        let ret = "./portail.html";
+        try {
+          const raw = new URLSearchParams(location.search || "").get("return");
+          if (raw) ret = decodeURIComponent(raw);
+        } catch (_) {}
+        if (
+          typeof ret !== "string" ||
+          /^https?:/i.test(ret) ||
+          ret.startsWith("//") ||
+          /^javascript:/i.test(ret) ||
+          ret.toLowerCase().includes("choix-competition.html")
+        ) {
+          ret = "./portail.html";
+        }
+
+        function go(compId) {
+          const safe = HyroxStore.sanitizeCompetitionRef(compId);
+          const url = new URL(ret, window.location.href);
+          url.searchParams.set("comp", safe);
+          window.location.href = url.pathname + url.search + url.hash;
+        }
+
+        try {
+          await HyroxStore.whenCloudReady();
+          const rows = await HyroxStore.listCompetitions();
+          if (!rows.length) {
+            hint.innerHTML =
+              '<span class="pick-error">Aucune ligne <code class="text-secondary">hyrox-*</code> trouvée. Crée une compétition depuis l’administration.</span>';
+            return;
+          }
+          hint.textContent = "Récentes compétitions enregistrées sur le cloud :";
+          rows.sort((a, b) =>
+            String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""))
+          );
+          list.textContent = "";
+          rows.forEach((r) => {
+            const id = String(r.id || "").trim();
+            if (!id) return;
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "pick-btn";
+            const sid = document.createElement("span");
+            sid.className = "id";
+            sid.textContent = id;
+            const meta = document.createElement("span");
+            meta.className = "meta";
+            meta.textContent = r.updatedAt
+              ? new Date(r.updatedAt).toLocaleString("fr-FR", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })
+              : "—";
+            btn.appendChild(sid);
+            btn.appendChild(meta);
+            btn.addEventListener("click", () => go(id));
+            list.appendChild(btn);
+          });
+        } catch (e) {
+          console.warn(e);
+          hint.innerHTML =
+            '<span class="pick-error">Impossible de lister les compétitions — réseau ou configuration Supabase.</span>';
+        }
+      })();
+    </script>
+  </body>
+</html>

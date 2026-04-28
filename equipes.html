@@ -548,7 +548,7 @@
       function applyDrop(targetId) {
         if (!dragSrcId || dragSrcId === targetId) return;
         const state = HyroxStore.loadState();
-        const sorted = [...state.teams].sort(HyroxStore.compareAthletes);
+        const sorted = [...state.teams].sort((a, b) => HyroxStore.compareAthletes(a, b, state));
         const srcIdx = sorted.findIndex((t) => t.id === dragSrcId);
         const tgtIdx = sorted.findIndex((t) => t.id === targetId);
         if (srcIdx < 0 || tgtIdx < 0) return;
@@ -585,7 +585,7 @@
         }));
         sheetBody.innerHTML = "";
 
-        const sorted = [...state.teams].sort(HyroxStore.compareAthletes);
+        const sorted = [...state.teams].sort((a, b) => HyroxStore.compareAthletes(a, b, state));
 
         sorted.forEach((team) => {
           const tr = document.createElement("tr");

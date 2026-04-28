@@ -50,6 +50,23 @@ function rankGroupKey(team) {
   return "Open|Mixte";
 }
 
+/**
+ * Ordre personnalisé des catégories pour les heats / affichage.
+ * Tableau de clés `rankGroupKey` sans doublon, ou `null` si absent / invalide → ordre implicite.
+ */
+function normalizeRankGroupHeatOrder(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const seen = new Set();
+  const out = [];
+  for (const k of raw) {
+    const s = String(k || "").trim();
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out.length ? out : null;
+}
+
 /** Libellé court pour affichage (TV, scores, portail). */
 function formatTeamDivisionLine(team) {
   if (!team) return "—";
@@ -118,6 +135,11 @@ const defaultState = {
     heatIntervalMinutes: 20,
     athletesPerHeat: 2,
     metconStaggerMinutes: 0,
+    /**
+     * Ordre de passage des catégories (clés `rankGroupKey`) pour heats, planning, blocs classement/TV.
+     * `null` ou tableau vide → règles implicites (Open/Pro, solo, duos…).
+     */
+    rankGroupHeatOrder: null,
   },
   teams: [],
   /** Aucun créneau club après le départ : l’échauffement est uniquement `config.warmupMinutes` avant le heat. */
@@ -243,6 +265,27 @@ function buildCompetitionUrl(ref, absolute = false) {
   return absolute ? current.toString() : `${current.pathname}${current.search}${current.hash}`;
 }
 
+/**
+ * Sans `?comp=` dans l’URL : redirection vers choix-competition.html (chargement liste Supabase).
+ * Ne pas utiliser sur choix-competition ni pages qui n’imbriquent pas une compétition (ex. index d’accueil).
+ */
+function redirectToCompetitionPickerIfUrlMissingComp() {
+  try {
+    const leaf = (window.location.pathname.split("/").pop() || "").toLowerCase();
+    if (leaf === "choix-competition.html") return false;
+    if (getCompetitionRefFromUrl()) return false;
+    window.location.replace(
+      "choix-competition.html?return=" +
+        encodeURIComponent(
+          window.location.pathname + window.location.search + window.location.hash
+        )
+    );
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 function hasRemoteCredentials(cfg) {
   return Boolean(cfg && cfg.url && cfg.anonKey);
 }
@@ -272,11 +315,12 @@ function scheduleAutoPush(stateSnapshot) {
 }
 
 function normalizeState(rawState) {
+  const incoming = rawState || {};
   const state = {
     ...structuredClone(defaultState),
-    ...(rawState || {}),
-    // Les épreuves sont fixes : on ignore toujours ce qui vient du cloud/local.
-    events: structuredClone(defaultState.events),
+    ...incoming,
+    // Conserver les épreuves du cloud lorsqu’elles sont présentes (scores, classement, portail athlète).
+    events: Array.isArray(incoming.events) ? [...incoming.events] : structuredClone(defaultState.events),
   };
   // Un seul enregistrement par id (évite doublons visibles sur la TV / classement après sync)
   const seenTeamIds = new Set();
@@ -318,9 +362,12 @@ function normalizeState(rawState) {
     scoreFormat: event.scoreFormat || "",
     notes: event.notes || "",
   }));
+  const sanitizedRankOrder = normalizeRankGroupHeatOrder(state.config?.rankGroupHeatOrder);
+
   state.config = {
     ...defaultState.config,
     ...state.config,
+    rankGroupHeatOrder: sanitizedRankOrder,
     metconStaggerMinutes: 0,
     estimatedParcoursMinutes: Math.max(
       1,
@@ -331,6 +378,7 @@ function normalizeState(rawState) {
       ) || 90
     ),
   };
+  delete state.config.hyroxPassageOrders;
   state.hyroxPassages =
     state.hyroxPassages && typeof state.hyroxPassages === "object" && !Array.isArray(state.hyroxPassages)
       ? state.hyroxPassages
@@ -523,8 +571,8 @@ function getRanking(state) {
       return { teamId: team.id, team, eventRanks, total, scoredCount: scored.length };
     })
     .sort((a, b) => {
-      const ka = athleteSortKey(a.team);
-      const kb = athleteSortKey(b.team);
+      const ka = athleteSortKey(a.team, state);
+      const kb = athleteSortKey(b.team, state);
       for (let i = 0; i < Math.max(ka.length, kb.length); i++) {
         const va = ka[i] ?? 0;
         const vb = kb[i] ?? 0;
@@ -551,6 +599,11 @@ function teamHasDnfScore(state, teamId) {
   return state.scores.some(
     (s) => s.teamId === teamId && s.dnf && scoredIds.has(s.eventId)
   );
+}
+
+/** DNF parcours (page Passages) ou abandon sur une épreuve scorée — même logique que la grille TV / classements. */
+function teamIsDnf(state, teamId) {
+  return getHyroxPassageDnf(state, teamId) || teamHasDnfScore(state, teamId);
 }
 
 function parseHmToMinutes(hm) {
@@ -590,35 +643,55 @@ const DIVISION_SORT = { Open: 0, Pro: 1 };
 const FORMAT_ORDER_MAP = { Solo: 0, Mixte: 1, DuoF: 2, DuoH: 3 };
 const GEND_ORDER_SOLO = { Femme: 0, Homme: 1 };
 
-function athleteSortKey(a) {
-  const div = DIVISION_SORT[normalizeCategory(effectiveCategory(a))] ?? 99;
-  const fmt = FORMAT_ORDER_MAP[getTeamFormat(a)] ?? 99;
-  const gend = getTeamFormat(a) === TEAM_FORMAT_SOLO ? (GEND_ORDER_SOLO[a.gender] ?? 99) : 0;
+function athleteSortKey(a, state) {
   const order = a.sortOrder != null ? Number(a.sortOrder) : 9999;
   const last = (a.lastName || a.name || "").toLowerCase();
-  return [div, fmt, gend, order, last];
+  const ord = state ? normalizeRankGroupHeatOrder(state.config?.rankGroupHeatOrder) : null;
+  if (!ord || !ord.length) {
+    const div = DIVISION_SORT[normalizeCategory(effectiveCategory(a))] ?? 99;
+    const fmt = FORMAT_ORDER_MAP[getTeamFormat(a)] ?? 99;
+    const gend = getTeamFormat(a) === TEAM_FORMAT_SOLO ? (GEND_ORDER_SOLO[a.gender] ?? 99) : 0;
+    return [div, fmt, gend, order, last];
+  }
+  const rk = rankGroupKey(a);
+  const gIdx = ord.indexOf(rk);
+  const grpPri = gIdx >= 0 ? gIdx : 999;
+  return [grpPri, order, last];
 }
 
-function compareAthletes(a, b) {
-  const ka = athleteSortKey(a);
-  const kb = athleteSortKey(b);
-  for (let i = 0; i < ka.length; i++) {
-    if (ka[i] < kb[i]) return -1;
-    if (ka[i] > kb[i]) return 1;
+function compareAthletes(a, b, state) {
+  const ka = athleteSortKey(a, state);
+  const kb = athleteSortKey(b, state);
+  const len = Math.max(ka.length, kb.length);
+  for (let i = 0; i < len; i++) {
+    const va = ka[i] ?? 0;
+    const vb = kb[i] ?? 0;
+    if (va < vb) return -1;
+    if (va > vb) return 1;
   }
   return 0;
 }
 
-/** Ordre des blocs « classement / TV » : même ordre que les heats. */
+/** Ordre des blocs « classement / TV » : suit `rankGroupHeatOrder` si défini, puis ordre comme les heats (tri athlètes). */
 function sortedRankGroupKeys(state) {
   if (!state || !state.teams) return [];
-  const seen = new Set();
+  const sortedTeams = [...state.teams].sort((a, b) => compareAthletes(a, b, state));
+  const ord = normalizeRankGroupHeatOrder(state.config?.rankGroupHeatOrder);
+  const keysPresent = new Set(sortedTeams.map((t) => rankGroupKey(t)));
   const out = [];
-  [...state.teams].sort(compareAthletes).forEach((t) => {
+  const seen = new Set();
+  if (ord && ord.length) {
+    ord.forEach((k) => {
+      if (!keysPresent.has(k) || seen.has(k)) return;
+      out.push(k);
+      seen.add(k);
+    });
+  }
+  sortedTeams.forEach((t) => {
     const k = rankGroupKey(t);
     if (!seen.has(k)) {
-      seen.add(k);
       out.push(k);
+      seen.add(k);
     }
   });
   return out;
@@ -626,7 +699,7 @@ function sortedRankGroupKeys(state) {
 
 function buildHeatSchedule(state) {
   const perHeat = Number(state.config.athletesPerHeat || 2);
-  const sorted = [...state.teams].sort(compareAthletes);
+  const sorted = [...state.teams].sort((a, b) => compareAthletes(a, b, state));
 
   // Groupement dynamique par position dans le tableau trié
   const grouped = {};
@@ -763,6 +836,34 @@ const HYROX_PASSAGE_LABELS = [
   "RUN 1", "SKI ERG", "RUN 2", "SLED PUSH", "RUN 3", "SLED PULL", "RUN 4", "BBJ",
   "RUN 5", "ROW", "RUN 6", "FARMER CARRY", "RUN 7", "LUNGE", "RUN 8", "WALLBALL",
 ];
+
+/** Clés utilisées pour l’admin (ordre des catégories) — alignées sur `rankGroupKey`. */
+const RANK_GROUP_ORDER_KEYS = [
+  "Open|Solo|Femme",
+  "Open|Solo|Homme",
+  "Pro|Solo|Femme",
+  "Pro|Solo|Homme",
+  "Open|DuoF",
+  "Open|DuoH",
+  "Pro|DuoF",
+  "Pro|DuoH",
+  "Open|Mixte",
+];
+
+function rankGroupCategoryLabel(key) {
+  const labels = {
+    "Open|Solo|Femme": "Open · Solo · Femmes",
+    "Open|Solo|Homme": "Open · Solo · Hommes",
+    "Pro|Solo|Femme": "Pro · Solo · Femmes",
+    "Pro|Solo|Homme": "Pro · Solo · Hommes",
+    "Open|DuoF": "Open · Duo femmes",
+    "Open|DuoH": "Open · Duo hommes",
+    "Pro|DuoF": "Pro · Duo femmes",
+    "Pro|DuoH": "Pro · Duo hommes",
+    "Open|Mixte": "Open · Mixte",
+  };
+  return labels[key] || key;
+}
 
 /** Heure du jour → secondes depuis minuit (HH:MM ou HH:MM:SS). */
 function parsePassageClock(str) {
@@ -947,8 +1048,10 @@ window.HyroxStore = {
   uid,
   loadState,
   saveState,
+  normalizeState,
   getRanking,
   teamHasDnfScore,
+  teamIsDnf,
   buildHeatSchedule,
   getHeatStartClockString,
   getAthleteEndMinutes,
@@ -956,6 +1059,9 @@ window.HyroxStore = {
   normalizeTeamPayload,
   upsertScore,
   HYROX_PASSAGE_LABELS,
+  RANK_GROUP_ORDER_KEYS,
+  normalizeRankGroupHeatOrder,
+  rankGroupCategoryLabel,
   parsePassageClock,
   formatPassageClock,
   roxSegmentDurationSec,
@@ -983,6 +1089,7 @@ window.HyroxStore = {
   getEffectiveCompetitionRef,
   sanitizeCompetitionRef,
   buildCompetitionUrl,
+  redirectToCompetitionPickerIfUrlMissingComp,
   defaultState,
   normalizeCategory,
   getTeamFormat,

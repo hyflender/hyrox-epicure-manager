@@ -169,6 +169,10 @@
     </style>
   </head>
   <body>
+    <script src="./assets/js/data.js"></script>
+    <script>
+      HyroxStore.redirectToCompetitionPickerIfUrlMissingComp();
+    </script>
     <nav class="navbar navbar-expand-md navbar-dark border-bottom border-secondary admin-navbar">
       <div class="container-fluid">
         <a class="navbar-brand" href="./index.html"><span class="fw-bold">HYROX</span> <span class="text-secondary" style="font-size:0.88rem">· Athlètes</span></a>
@@ -182,7 +186,6 @@
             <li class="nav-item"><a class="nav-link" href="./epreuves.html">Épreuves</a></li>
             <li class="nav-item"><a class="nav-link" href="./classement.html">Classement</a></li>
             <li class="nav-item"><a class="nav-link" href="./athlete.html">Mes résultats</a></li>
-            <li class="nav-item"><a class="nav-link text-secondary" href="./admin.html" title="Espace gérant">Espace gérant</a></li>
           </ul>
         </div>
       </div>
@@ -202,9 +205,6 @@
           <span id="clock">—</span>
           <span id="next-up-label"></span>
         </div>
-        <p class="pm-hint-legend mb-0" id="planning-hint" style="font-size:12px;color:var(--muted)">
-          Affichage <strong>réduit</strong> : heure de <strong>départ du heat</strong> (début de parcours) — pas le détail des segments course/stations, ateliers ni enchaînements. Pour le fil du parcours, voir <a href="./epreuves.html" style="color:var(--gold)">Épreuves</a> ou <a href="./tv.html" class="d-inline d-md-inline" style="color:var(--gold)" target="_blank" rel="noopener">TV</a>.
-        </p>
         <div id="planning-mobile" class="d-md-none">
           <div id="planning-mobile-body" class="pt-2"></div>
         </div>
@@ -216,7 +216,6 @@
         </div>
       </section>
     </main>
-    <script src="./assets/js/data.js"></script>
     <script>
       const thead       = document.querySelector("#planning-head");
       const tbody       = document.querySelector("#planning-tbody");

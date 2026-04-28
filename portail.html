@@ -22,6 +22,10 @@
     </style>
   </head>
   <body>
+    <script src="./assets/js/data.js"></script>
+    <script>
+      HyroxStore.redirectToCompetitionPickerIfUrlMissingComp();
+    </script>
     <nav class="navbar navbar-expand-md navbar-dark border-bottom border-secondary admin-navbar">
       <div class="container-fluid">
         <a class="navbar-brand" href="./index.html"><span class="fw-bold">HYROX</span> <span class="text-secondary" style="font-size:0.88rem">· Athlètes</span></a>
@@ -35,7 +39,6 @@
             <li class="nav-item"><a class="nav-link" href="./epreuves.html">Épreuves</a></li>
             <li class="nav-item"><a class="nav-link" href="./classement.html">Classement</a></li>
             <li class="nav-item"><a class="nav-link" href="./athlete.html">Mes résultats</a></li>
-            <li class="nav-item"><a class="nav-link text-secondary" href="./admin.html" title="Espace gérant">Espace gérant</a></li>
           </ul>
         </div>
       </div>
@@ -44,7 +47,7 @@
     <main class="container-fluid px-2 px-sm-3 py-3 py-md-4" style="max-width: 960px;">
       <div class="portal-hero">
         <h1>Espace athlètes</h1>
-        <p class="text-muted mb-0">Accès aux infos publics de la compétition. Utilise le lien que t’envoie l’orga (avec <code class="text-secondary">?comp=…</code>) si besoin.</p>
+        <p class="text-muted mb-0">Sans <code class="text-secondary">?comp=</code> dans l’URL, tu choisis la compétition à l’entrée (liste sécurisée depuis le cloud). Sinon un lien avec <code class="text-secondary">?comp=id</code> ouvre directement la bonne édition.</p>
       </div>
       <div class="row g-3 g-md-4 py-3">
         <div class="col-12 col-sm-6">
@@ -79,6 +82,5 @@
       <p class="text-center small text-muted pt-2"><a href="./index.html" class="text-secondary">← Accueil</a></p>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <script src="./assets/js/data.js"></script>
   </body>
 </html>

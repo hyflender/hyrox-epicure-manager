@@ -58,6 +58,10 @@
     </style>
   </head>
   <body>
+    <script src="./assets/js/data.js"></script>
+    <script>
+      HyroxStore.redirectToCompetitionPickerIfUrlMissingComp();
+    </script>
     <nav class="navbar navbar-expand-md navbar-dark border-bottom border-secondary admin-navbar">
       <div class="container-fluid">
         <a class="navbar-brand" href="./index.html"><span class="fw-bold">HYROX</span> <span class="text-secondary" style="font-size:0.88rem">· Athlètes</span></a>
@@ -71,7 +75,6 @@
             <li class="nav-item"><a class="nav-link" href="./epreuves.html">Épreuves</a></li>
             <li class="nav-item"><a class="nav-link active" href="./classement.html">Classement</a></li>
             <li class="nav-item"><a class="nav-link" href="./athlete.html">Mes résultats</a></li>
-            <li class="nav-item"><a class="nav-link text-secondary" href="./admin.html" title="Espace gérant">Espace gérant</a></li>
           </ul>
         </div>
       </div>
@@ -85,7 +88,6 @@
         <div id="ranking-root"></div>
       </section>
     </main>
-    <script src="./assets/js/data.js"></script>
     <script>
       const root = document.querySelector("#ranking-root");
 

@@ -97,7 +97,79 @@
       </section>
         </div>
       </div>
+
+      <div class="row g-3 mt-1">
+        <div class="col-12">
+          <section class="card rank-group-settings">
+            <h2 class="rank-group-settings__title">Ordre des catégories (passage des heats)</h2>
+            <p class="rank-group-settings__intro mb-3">
+              Réordonne les <strong>divisions Hyrox</strong> (Open / Pro, solo, duo femmes/hommes, mixte) : cet ordre s’applique au <strong>remplissage des heats</strong>, au <strong>planning</strong>, aux <strong>lignes de la page Passages</strong> et aux <strong>blocs classement / TV</strong>. Les <strong>16 segments</strong> du parcours Hyrox restent toujours dans l’ordre officiel RUN 1 → mur.
+            </p>
+            <div class="row g-3 align-items-start">
+              <div class="col-12">
+                <p class="rank-group-settings__hint small mb-2">Glisser-déposer les lignes (HTML5).</p>
+                <ol id="rank-group-order-list" class="passage-drag-list list-unstyled"></ol>
+              </div>
+              <div class="col-12 d-flex flex-wrap align-items-center gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="rank-group-order-reset">Ordre par défaut (Open → Pro…)</button>
+                <button type="button" class="btn btn-primary btn-sm" id="rank-group-order-save">Enregistrer l’ordre des catégories</button>
+                <span class="rank-group-settings__status small" id="rank-group-order-status" style="min-height: 1.2em"></span>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
     </main>
+
+    <style>
+      /* Bloc ordre catégories : texte lisible (évite noir sur noir Bootstrap/muted). */
+      .rank-group-settings .rank-group-settings__title {
+        color: #fff !important;
+      }
+      .rank-group-settings .rank-group-settings__intro,
+      .rank-group-settings .rank-group-settings__hint,
+      .rank-group-settings .rank-group-settings__intro strong {
+        color: rgba(255, 255, 255, 0.92) !important;
+      }
+      .rank-group-settings .rank-group-settings__status {
+        color: rgba(255, 255, 255, 0.88) !important;
+      }
+
+      .passage-drag-list {
+        max-width: 560px;
+        margin: 0;
+        padding: 0;
+        border: 1px solid var(--border, #444);
+        border-radius: 10px;
+        overflow: hidden;
+        background: rgba(0, 0, 0, 0.2);
+        counter-reset: seg;
+      }
+      .rank-group-settings .passage-drag-list li.passage-drag-li {
+        counter-increment: seg;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        cursor: grab;
+        font-size: 13px;
+        list-style: none;
+        color: #fff;
+      }
+      .rank-group-settings .passage-drag-list li.passage-drag-li::before {
+        content: counter(seg) ".";
+        font-family: var(--mono, monospace);
+        color: rgba(255, 255, 255, 0.55);
+        min-width: 1.5em;
+      }
+      .passage-drag-list li.passage-drag-li:last-child {
+        border-bottom: none;
+      }
+      .passage-drag-list li.passage-drag-li.dragging {
+        opacity: 0.45;
+      }
+    </style>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
     <script src="./assets/js/auth.js"></script>
@@ -119,6 +191,108 @@
       const competitionRefreshBtn = document.querySelector("#competition-refresh");
       const competitionOpenSelectedBtn = document.querySelector("#competition-open-selected");
       const competitionListStatus = document.querySelector("#competition-list-status");
+      const rankGroupOrderList = document.querySelector("#rank-group-order-list");
+      const rankGroupOrderReset = document.querySelector("#rank-group-order-reset");
+      const rankGroupOrderSave = document.querySelector("#rank-group-order-save");
+      const rankGroupOrderStatus = document.querySelector("#rank-group-order-status");
+      let rankGroupOrderDraft = [...HyroxStore.RANK_GROUP_ORDER_KEYS];
+
+      function moveIndex(arr, from, to) {
+        if (from === to || from < 0 || to < 0 || from >= arr.length || to >= arr.length) return;
+        const [x] = arr.splice(from, 1);
+        arr.splice(to, 0, x);
+      }
+
+      function renderRankGroupDragList() {
+        if (!rankGroupOrderList) return;
+        rankGroupOrderList.innerHTML = rankGroupOrderDraft
+          .map(
+            (key, vis) =>
+              `<li class="passage-drag-li" draggable="true" data-vis="${vis}" title="${escPass(key)}">${escPass(
+                HyroxStore.rankGroupCategoryLabel(key),
+              )}</li>`,
+          )
+          .join("");
+      }
+
+      function escPass(s) {
+        return String(s || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function defaultRankOrderEquals(arr) {
+        const d = HyroxStore.RANK_GROUP_ORDER_KEYS;
+        return arr.length === d.length && arr.every((v, i) => v === d[i]);
+      }
+
+      function loadRankGroupOrderFromState() {
+        const state = HyroxStore.loadState();
+        const raw = HyroxStore.normalizeRankGroupHeatOrder(state?.config?.rankGroupHeatOrder);
+        rankGroupOrderDraft = raw && raw.length ? [...raw] : [...HyroxStore.RANK_GROUP_ORDER_KEYS];
+        renderRankGroupDragList();
+      }
+
+      rankGroupOrderReset?.addEventListener("click", () => {
+        rankGroupOrderDraft = [...HyroxStore.RANK_GROUP_ORDER_KEYS];
+        renderRankGroupDragList();
+      });
+
+      rankGroupOrderSave?.addEventListener("click", async () => {
+        const state = HyroxStore.loadState();
+        state.config.rankGroupHeatOrder = defaultRankOrderEquals(rankGroupOrderDraft)
+          ? null
+          : [...rankGroupOrderDraft];
+        HyroxStore.saveState(state);
+        if (rankGroupOrderStatus) rankGroupOrderStatus.textContent = "Ordre enregistré — sync cloud…";
+        try {
+          await HyroxStore.pushRemote(state);
+          if (rankGroupOrderStatus) rankGroupOrderStatus.textContent = "Enregistré et synchronisé.";
+        } catch (err) {
+          if (rankGroupOrderStatus) {
+            rankGroupOrderStatus.textContent = `Mémorisé localement · cloud indisponible · ${err?.message || err}`;
+          }
+        }
+      });
+
+      (function rankGroupOrderDragDrop() {
+        if (!rankGroupOrderList) return;
+        let dragFrom = null;
+
+        rankGroupOrderList.addEventListener("dragstart", (e) => {
+          const li = e.target.closest(".passage-drag-li");
+          if (!li) return;
+          dragFrom = Number(li.dataset.vis);
+          li.classList.add("dragging");
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", String(dragFrom));
+        });
+
+        rankGroupOrderList.addEventListener("dragend", (e) => {
+          const li = e.target.closest(".passage-drag-li");
+          if (li) li.classList.remove("dragging");
+          dragFrom = null;
+        });
+
+        rankGroupOrderList.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+        });
+
+        rankGroupOrderList.addEventListener("drop", (e) => {
+          e.preventDefault();
+          const destLi = e.target.closest(".passage-drag-li");
+          if (!destLi || dragFrom === null || dragFrom === undefined) return;
+          const dragTo = Number(destLi.dataset.vis);
+          moveIndex(rankGroupOrderDraft, dragFrom, dragTo);
+          renderRankGroupDragList();
+        });
+      })();
+
+      function bootstrapRankGroupOrderPanel() {
+        loadRankGroupOrderFromState();
+      }
 
       function refresh() {
         const state = HyroxStore.loadState();
@@ -209,6 +383,7 @@
         } catch (_) {}
         refresh();
         refreshCompetitionList();
+        bootstrapRankGroupOrderPanel();
       }
 
       document.querySelector("#password-form")?.addEventListener("submit", async (e) => {

@@ -200,6 +200,56 @@
         background: rgba(255,255,255,.12);
       }
       .completion-dot.done { background: var(--accent); }
+      .completion-dot.dnf { background: #F87171; box-shadow: 0 0 0 1px rgba(248,113,113,.6); }
+
+      .rank-podium-dnf {
+        border-color: rgba(248,113,113,.32);
+        background: rgba(248,113,113,.07);
+      }
+      .rank-medal--dnf {
+        font-size: 28px;
+        font-weight: 900;
+        color: #F87171;
+        font-family: var(--mono);
+        letter-spacing: 0.12em;
+      }
+      .rank-num-dnf {
+        color: #F87171 !important;
+        font-size: 32px !important;
+        letter-spacing: 0.08em;
+      }
+      .rank-dnf-note {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 8px;
+        line-height: 1.4;
+        max-width: 42ch;
+      }
+
+      .rank-podium-hyrox {
+        border-color: rgba(198,255,0,.28);
+        background: rgba(198,255,0,.06);
+      }
+      .rank-num-hyrox {
+        color: var(--accent) !important;
+        font-size: 36px !important;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.02em;
+      }
+      .rank-hyrox-hint {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 8px;
+        line-height: 1.4;
+        max-width: 48ch;
+      }
+      .club-progress-note {
+        font-size: 11px;
+        color: var(--muted);
+        margin: 10px 0 4px;
+        line-height: 1.45;
+        max-width: 52ch;
+      }
 
       /* ── No result / Loader → utilise .empty-state, .spinner de styles.css ── */
       .empty-state { padding: 60px 24px; font-size: 14px; }
@@ -210,13 +260,109 @@
         font-family: var(--mono); font-size: 13px; color: var(--muted);
       }
       .loader .spinner { width: 24px; height: 24px; border-width: 3px; margin-right: 10px; }
+
+      /* ── Détail parcours Hyrox (segments + Rox) ───────────────── */
+      .hyrox-block {
+        margin-top: 20px;
+        padding-top: 18px;
+        border-top: 1px solid var(--border);
+      }
+      .hyrox-block h4 {
+        font-size: 13px;
+        font-family: var(--mono);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+      .hyrox-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .hyrox-sum-cell {
+        background: rgba(255,255,255,.03);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px 14px;
+      }
+      .hyrox-sum-cell .lbl {
+        font-size: 10px;
+        font-family: var(--mono);
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .hyrox-sum-cell .val {
+        font-family: var(--mono);
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--text);
+        margin-top: 4px;
+      }
+      .hyrox-sum-cell .sub {
+        font-size: 11px;
+        font-family: var(--mono);
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .delta-faster { color: #34D399 !important; }
+      .delta-slower { color: #FB923C !important; }
+      .hyrox-note {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 10px;
+        line-height: 1.45;
+      }
+      .hyrox-scroll { overflow-x: auto; margin: 0 -4px; }
+      .hyrox-table {
+        width: 100%;
+        min-width: 840px;
+        border-collapse: collapse;
+        font-size: 11px;
+        font-family: var(--mono);
+      }
+      .hyrox-table th {
+        text-align: left;
+        padding: 8px 6px;
+        color: var(--muted);
+        font-weight: 600;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      .hyrox-table td {
+        padding: 8px 6px;
+        border-bottom: 1px solid rgba(255,255,255,.06);
+        vertical-align: middle;
+      }
+      .hyrox-table tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+      .hyrox-seg-name { font-weight: 700; color: var(--text); max-width: 140px; }
+      .hyrox-seg-idx { color: var(--muted); font-weight: 600; width: 28px; }
+      .hyrox-type-run { color: #60A5FA; }
+      .hyrox-type-station { color: #A78BFA; }
+      .hyrox-empty {
+        font-size: 12px;
+        color: var(--muted);
+        font-style: italic;
+        padding: 8px 0;
+      }
+      .dnf-banner {
+        background: rgba(248,113,113,.12);
+        border: 1px solid rgba(248,113,113,.35);
+        color: #F87171;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 12px;
+        margin-bottom: 12px;
+      }
     </style>
   </head>
   <body>
     <div id="hero">
       <div class="hero-logo">Hyrox Epicure · Résultats</div>
       <div class="hero-title">🏅 Trouve tes résultats</div>
-      <div class="hero-sub">Recherche ton nom parmi toutes les compétitions</div>
+      <div class="hero-sub">Chrono course, épreuves club, détail des <strong>segments Hyrox</strong> &amp; <strong>zones Rox</strong> vs ta catégorie</div>
 
       <div id="search-wrap">
         <input type="text" id="search-input" placeholder="Nom ou prénom…" autocomplete="off" spellcheck="false" />
@@ -241,7 +387,29 @@
       ev_warmup:   { icon:"🔥", color:"#F97316" },
     };
 
-    const MEDALS = ["🥇","🥇","🥈","🥉"];
+    const MEDAL_RANK = { 1: "🥇", 2: "🥈", 3: "🥉" };
+
+    /** Aligné sur équipe/club (`lastName`, `firstName`, …) pour HyroxStore.* */
+    function indexEntryAsTeam(en) {
+      if (!en) return {};
+      const tf =
+        en.teamFormat === HyroxStore.TEAM_FORMAT_DUO_H ||
+        en.teamFormat === HyroxStore.TEAM_FORMAT_DUO_F ||
+        en.teamFormat === HyroxStore.TEAM_FORMAT_MIXTE ||
+        en.teamFormat === HyroxStore.TEAM_FORMAT_SOLO
+          ? en.teamFormat
+          : HyroxStore.TEAM_FORMAT_SOLO;
+      return {
+        id: en.teamId,
+        lastName: en.last || "",
+        firstName: en.first || "",
+        partnerLastName: en.partnerLastName || "",
+        partnerFirstName: en.partnerFirstName || "",
+        category: en.category || "Open",
+        teamFormat: tf,
+        gender: en.gender || "",
+      };
+    }
 
     // ══════════════════════════════════════════════════════════
     //  FETCH TOUTES LES COMPÉTITIONS
@@ -317,15 +485,31 @@
     function searchAthletes(query) {
       if (!query || query.length < 2) return [];
       const q = normalize(query);
-      // Dédupe par nom unique (last|first) — un seul résultat par athlète
-      const seen = new Set();
-      return athleteIndex.filter(a => {
+      /** Une entrée par personne ; en cas de doublons (plusieurs comps), on garde la ligne la plus récemment mise à jour. */
+      const latestByKey = new Map();
+      athleteIndex.forEach((a) => {
+        if (!normalize(a.searchBlob || a.key).includes(q)) return;
         const nameKey = `${normalize(a.last)}|${normalize(a.first)}`;
-        if (seen.has(nameKey)) return false;
-        const match = normalize(a.searchBlob || a.key).includes(q);
-        if (match) seen.add(nameKey);
-        return match;
-      }).slice(0, 20);
+        const prev = latestByKey.get(nameKey);
+        const tA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const tP = prev && prev.updatedAt ? new Date(prev.updatedAt).getTime() : -1;
+        if (!prev || tA >= tP) latestByKey.set(nameKey, a);
+      });
+      return [...latestByKey.values()]
+        .sort((a, b) => {
+          const ln = normalize(a.last).localeCompare(normalize(b.last));
+          if (ln !== 0) return ln;
+          return normalize(a.first).localeCompare(normalize(b.first));
+        })
+        .slice(0, 24);
+    }
+
+    function escHtml(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
     }
 
     function renderAC(items) {
@@ -335,13 +519,18 @@
         acBox.classList.add("open");
         return;
       }
-      acBox.innerHTML = items.map((a, i) => `
+      acBox.innerHTML = items
+        .map((a, i) => {
+          const t = indexEntryAsTeam(a);
+          return `
         <div class="ac-item" data-idx="${i}" tabindex="-1">
           <div>
-            <div class="ac-name">${HyroxStore.formatTeamDisplayName(a)}</div>
-            <div class="ac-meta">${HyroxStore.formatTeamDivisionLine(a)}</div>
+            <div class="ac-name">${escHtml(HyroxStore.formatTeamDisplayName(t))}</div>
+            <div class="ac-meta">${escHtml(HyroxStore.formatTeamDivisionLine(t))}</div>
           </div>
-        </div>`).join("");
+        </div>`;
+        })
+        .join("");
       acBox.classList.add("open");
 
       acBox.querySelectorAll(".ac-item").forEach((el, i) => {
@@ -363,14 +552,15 @@
 
     searchInput.addEventListener("keydown", (e) => {
       const items = acBox.querySelectorAll(".ac-item");
+      if (!items.length && (e.key === "ArrowDown" || e.key === "ArrowUp")) return;
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        acFocusIdx = Math.min(acFocusIdx+1, items.length-1);
-        items.forEach((el,i)=>el.classList.toggle("focused",i===acFocusIdx));
+        acFocusIdx = Math.min(acFocusIdx + 1, Math.max(items.length - 1, 0));
+        items.forEach((el, i) => el.classList.toggle("focused", i === acFocusIdx));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        acFocusIdx = Math.max(acFocusIdx-1, 0);
-        items.forEach((el,i)=>el.classList.toggle("focused",i===acFocusIdx));
+        acFocusIdx = Math.max(acFocusIdx - 1, 0);
+        items.forEach((el, i) => el.classList.toggle("focused", i === acFocusIdx));
       } else if (e.key === "Enter") {
         e.preventDefault();
         if (acFocusIdx >= 0 && items[acFocusIdx]) {
@@ -411,6 +601,178 @@
       if (r===2) return "r2";
       if (r===3) return "r3";
       return "best";
+    }
+
+    function hasPassageData(segs) {
+      for (let i = 0; i < 16; i++) {
+        const d = String(segs[i]?.dep || "").trim();
+        if (d && HyroxStore.parsePassageClock(d) != null) return true;
+      }
+      return false;
+    }
+
+    function cohortTeams(state, gk) {
+      return (state.teams || []).filter((t) => HyroxStore.rankGroupKey(t) === gk);
+    }
+
+    function meanPositive(arr) {
+      const v = arr.filter((x) => x != null && isFinite(x) && x >= 0);
+      if (!v.length) return null;
+      return v.reduce((a, b) => a + b, 0) / v.length;
+    }
+
+    function avgRoxSegmentForCohort(state, gk, segIdx) {
+      const vals = [];
+      cohortTeams(state, gk).forEach((t) => {
+        const segs = HyroxStore.getPassageSegmentsReadOnly(state, t.id);
+        const r = HyroxStore.roxTransitionZoneSec(
+          segs[segIdx]?.dep,
+          segs[segIdx + 1]?.arr
+        );
+        if (r != null && r >= 0 && isFinite(r)) vals.push(r);
+      });
+      return meanPositive(vals);
+    }
+
+    function avgSegDurationForCohort(state, gk, segIdx) {
+      const vals = [];
+      cohortTeams(state, gk).forEach((t) => {
+        const segs = HyroxStore.getPassageSegmentsReadOnly(state, t.id);
+        const d = HyroxStore.roxSegmentDurationSec(segs[segIdx]?.arr, segs[segIdx]?.dep);
+        if (d != null && d >= 0 && isFinite(d)) vals.push(d);
+      });
+      return meanPositive(vals);
+    }
+
+    function cohortGlobalSeconds(state, gk) {
+      const vals = [];
+      cohortTeams(state, gk).forEach((t) => {
+        const s = HyroxStore.getHyroxGlobalTimeSec(state, t.id);
+        if (s != null && s > 0 && isFinite(s)) vals.push(s);
+      });
+      return vals;
+    }
+
+    function formatDeltaVsAvgGlobal(athleteSec, avgSec) {
+      if (athleteSec == null || avgSec == null || !isFinite(athleteSec) || !isFinite(avgSec))
+        return { text: "", cls: "" };
+      const diff = athleteSec - avgSec;
+      const absFmt = HyroxStore.formatDurationMMSS(Math.abs(diff));
+      if (Math.abs(diff) < 8) return { text: " ≈ même temps que la moyenne", cls: "" };
+      if (diff <= 0) return { text: ` (${absFmt} plus rapide que la moy.)`, cls: "delta-faster" };
+      return { text: ` (${absFmt} plus lent que la moy.)`, cls: "delta-slower" };
+    }
+
+    function formatDeltaRoxCell(athRox, avgRox) {
+      if (athRox == null || avgRox == null) return { text: "—", cls: "" };
+      const diff = athRox - avgRox;
+      const absFmt = HyroxStore.formatDurationMMSS(Math.abs(diff));
+      if (Math.abs(diff) < 0.75) return { text: "≈", cls: "" };
+      if (diff <= 0) return { text: `−${absFmt}`, cls: "delta-faster" };
+      return { text: `+${absFmt}`, cls: "delta-slower" };
+    }
+
+    /** Bloc HTML : tableau segments + zones Rox vs moyenne catégorie. */
+    function buildHyroxSectionHtml(state, teamId, team) {
+      const segs = HyroxStore.getPassageSegmentsReadOnly(state, teamId);
+      const gk = HyroxStore.rankGroupKey(team);
+      const L = HyroxStore.HYROX_PASSAGE_LABELS;
+      const dnf = HyroxStore.getHyroxPassageDnf(state, teamId);
+      const mates = cohortTeams(state, gk);
+      const catLbl = HyroxStore.rankGroupCategoryLabel(gk);
+
+      if (!hasPassageData(segs)) {
+        if (dnf) {
+          return `<div class="hyrox-block">
+            <div class="dnf-banner"><strong>DNF</strong> — parcours non terminé (enregistré sur la page Passages).</div>
+            <h4>Parcours Hyrox — segments &amp; zones Rox</h4>
+            <p class="hyrox-empty">Aucun chronométrage de segment saisi : le parcours est marqué en abandon. Si c’est une erreur, les organisateurs peuvent décocher le DNF sur la page Passages.</p>
+          </div>`;
+        }
+        return `<div class="hyrox-block">
+          <h4>Parcours Hyrox — segments &amp; zones Rox</h4>
+          <p class="hyrox-empty">Aucun passage chronométré enregistré pour cette compétition. Les comparaisons à la catégorie apparaissent lorsque les organisateurs saisissent les temps sur la page Passages.</p>
+        </div>`;
+      }
+
+      const globalAth = HyroxStore.getHyroxGlobalTimeSec(state, teamId);
+      const globals = cohortGlobalSeconds(state, gk);
+      const avgGlobal = globals.length ? meanPositive(globals) : null;
+
+      const glDelta = formatDeltaVsAvgGlobal(globalAth, avgGlobal);
+
+      const summary = `<div class="hyrox-summary">
+        <div class="hyrox-sum-cell">
+          <div class="lbl">Chrono course (gun)</div>
+          <div class="val">${globalAth != null ? HyroxStore.formatHyroxRaceDuration(globalAth) : "—"}</div>
+          <div class="sub">
+            Moy. ${catLbl} : ${avgGlobal != null ? HyroxStore.formatHyroxRaceDuration(avgGlobal) : "—"}
+            <span class="${glDelta.cls}">${glDelta.text}</span><br/>
+            <span style="opacity:.85">(${globals.length} chrono${globals.length > 1 ? "s" : ""} valide${globals.length > 1 ? "s" : ""} / ${mates.length} inscrit${mates.length > 1 ? "s" : ""} catégorie)</span>
+          </div>
+        </div>
+      </div>`;
+
+      const dnfHtml = dnf
+        ? `<div class="dnf-banner"><strong>DNF</strong> — parcours non terminé (passage saisi).</div>`
+        : "";
+
+      const rows = [];
+      for (let i = 0; i < 16; i++) {
+        const isRun = i % 2 === 0;
+        const typCls = isRun ? "hyrox-type-run" : "hyrox-type-station";
+        const segDur = HyroxStore.roxSegmentDurationSec(segs[i]?.arr, segs[i]?.dep);
+        const segTxt = segDur != null ? HyroxStore.formatDurationMMSS(segDur) : "—";
+        const avgSeg = avgSegDurationForCohort(state, gk, i);
+        const segCmp =
+          segDur != null && avgSeg != null
+            ? formatDeltaRoxCell(segDur, avgSeg)
+            : { text: "—", cls: "" };
+
+        let roxTxt = "—";
+        let avgRoxDisp = "—";
+        let roxCmp = { text: "—", cls: "" };
+        if (i < 15) {
+          const athRox = HyroxStore.roxTransitionZoneSec(segs[i]?.dep, segs[i + 1]?.arr);
+          const avgRox = avgRoxSegmentForCohort(state, gk, i);
+          roxTxt = athRox != null ? HyroxStore.formatDurationMMSS(athRox) : "—";
+          avgRoxDisp = avgRox != null ? HyroxStore.formatDurationMMSS(avgRox) : "—";
+          roxCmp = formatDeltaRoxCell(athRox, avgRox);
+        }
+
+        rows.push(`<tr>
+          <td class="hyrox-seg-idx">${i + 1}</td>
+          <td class="hyrox-seg-name"><span class="${typCls}">${L[i]}</span></td>
+          <td>${segTxt}</td>
+          <td>${avgSeg != null ? HyroxStore.formatDurationMMSS(avgSeg) : "—"}</td>
+          <td class="${segCmp.cls}">${segCmp.text}</td>
+          <td>${i < 15 ? roxTxt : "—"}</td>
+          <td>${i < 15 ? avgRoxDisp : "—"}</td>
+          <td class="${roxCmp.cls}">${i < 15 ? roxCmp.text : "—"}</td>
+        </tr>`);
+      }
+
+      return `<div class="hyrox-block">
+        ${dnfHtml}
+        <h4>Parcours Hyrox — segments &amp; zones Rox</h4>
+        <p class="hyrox-note">Comparaison à la <strong>moyenne de ta catégorie</strong> (${catLbl}), sur les lignes où assez d’athlètes ont un temps comparable.</p>
+        ${summary}
+        <div class="hyrox-scroll">
+          <table class="hyrox-table">
+            <thead><tr>
+              <th>#</th>
+              <th>Segment</th>
+              <th>Temps segment</th>
+              <th>Moy. cat.</th>
+              <th>Δ / moy.</th>
+              <th>Zone Rox</th>
+              <th>Moy. Rox</th>
+              <th>Δ Rox</th>
+            </tr></thead>
+            <tbody>${rows.join("")}</tbody>
+          </table>
+        </div>
+      </div>`;
     }
 
     function showAthleteResults(lastOrFull, firstArg) {
@@ -456,24 +818,30 @@
       }
 
       Object.values(byAthlete).forEach(entries => {
-        const initials = (entries[0].last[0]||"") + (entries[0].first[0]||"");
+        const b0 = entries[0];
+        const tb0 = indexEntryAsTeam(b0);
+        let initials = `${(tb0.lastName || "")[0] || ""}${(tb0.firstName || "")[0] || ""}`.trim() || "?";
+        if ((tb0.partnerLastName || tb0.partnerFirstName) && HyroxStore.getTeamFormat(tb0) !== HyroxStore.TEAM_FORMAT_SOLO) {
+          initials =
+            `${(tb0.lastName || "")[0] || ""}${(tb0.firstName || "")[0] || ""}` +
+            `${(tb0.partnerLastName || "")[0] || ""}${(tb0.partnerFirstName || "")[0] || ""}`;
+        }
         const cardEl = document.createElement("div");
         cardEl.className = "ath-card";
 
         // ── En-tête de la carte ──
         const head = document.createElement("div");
         head.className = "ath-card-head";
-        const b0 = entries[0];
-        const bEff = HyroxStore.effectiveCategory(b0);
-        const bLine = HyroxStore.formatTeamDivisionLine(b0);
+        const bEff = HyroxStore.effectiveCategory(tb0);
+        const bLine = HyroxStore.formatTeamDivisionLine(tb0);
+        const dispMain = HyroxStore.formatTeamDisplayName(tb0);
         head.innerHTML = `
-          <div class="ath-avatar">${initials.toUpperCase()}</div>
+          <div class="ath-avatar">${escHtml(initials.toUpperCase().slice(0, 3))}</div>
           <div class="ath-name-block">
-            <div class="ath-last">${b0.last}</div>
-            <div class="ath-first">${b0.first}</div>
+            <div class="ath-last" style="font-size:clamp(18px,4vw,24px);line-height:1.2">${escHtml(dispMain)}</div>
           </div>
           <div class="ath-badges">
-            <span class="badge badge-${bEff}">${bLine}</span>
+            <span class="badge badge-${bEff}">${escHtml(bLine)}</span>
           </div>`;
         cardEl.appendChild(head);
 
@@ -481,13 +849,19 @@
         entries.sort((a,b)=>(b.compDate||"").localeCompare(a.compDate||"")).forEach(entry => {
           const compState = allCompStates.find(c=>c.id===entry.compId);
           if (!compState) return;
-          const state = compState.state;
+          const state = HyroxStore.normalizeState(JSON.parse(JSON.stringify(compState.state)));
           const team  = (state.teams||[]).find(t=>t.id===entry.teamId);
           if (!team) return;
 
           const ranking     = HyroxStore.getRanking(state);
           const myRanking   = ranking.find(r=>r.teamId===entry.teamId);
           const scoredEvents= (state.events||[]).filter(e=>e.scored).sort((a,b)=>a.order-b.order);
+          const isDnf       = HyroxStore.teamIsDnf(state, entry.teamId);
+          const passageDnf  = HyroxStore.getHyroxPassageDnf(state, entry.teamId);
+          const segsAth     = HyroxStore.getPassageSegmentsReadOnly(state, entry.teamId);
+          const hyroxGlobal = HyroxStore.getHyroxGlobalTimeSec(state, entry.teamId);
+          const hyroxPartial = hasPassageData(segsAth);
+          const hyroxAny    = hyroxGlobal != null || hyroxPartial;
 
           const gk0 = HyroxStore.rankGroupKey(team);
           const groupRanking = ranking.filter(r=>
@@ -512,8 +886,11 @@
           // ── Build HTML ──
           let rankHtml = "";
           if (groupRank !== null) {
-            const medal = groupRank <= 3 ? MEDALS[groupRank] : "";
+            const medal = groupRank <= 3 ? (MEDAL_RANK[groupRank] || "🏅") : "";
             const rcls  = `rank-num ${rankClass(groupRank)}`;
+            const dnfNote = isDnf
+              ? `<div class="rank-dnf-note">Statut <strong style="color:#F87171">DNF</strong> — abandon sur le parcours et/ou sur au moins une épreuve scorée.</div>`
+              : "";
             rankHtml = `
               <div class="rank-podium">
                 <div class="rank-medal">${medal||"🏅"}</div>
@@ -521,16 +898,46 @@
                   <div class="rank-label">${HyroxStore.formatTeamDivisionLine(team)}</div>
                   <div class="${rcls}">${groupRank}${ordinal(groupRank)}</div>
                   <div class="rank-total">${scoredCount} épreuve${scoredCount>1?"s":""} scorée${scoredCount>1?"s":""} · total rangs : ${myRanking.total}</div>
+                  ${dnfNote}
                 </div>
                 ${heatNum ? `<div class="rank-heat">${heatNum}</div>` : ""}
               </div>`;
+          } else if (isDnf) {
+            const dnfExplain = passageDnf
+              ? "Parcours enregistré en abandon (DNF) depuis la page Passages — pas de chrono global ni de détail segments."
+              : "Abandon (DNF) enregistré sur au moins une épreuve scorée par les organisateurs.";
+            rankHtml = `<div class="rank-podium rank-podium-dnf">
+              <div class="rank-medal rank-medal--dnf">DNF</div>
+              <div class="rank-info">
+                <div class="rank-label">${HyroxStore.formatTeamDivisionLine(team)}</div>
+                <div class="rank-num rank-num-dnf">Abandon</div>
+                <div class="rank-total">${dnfExplain}</div>
+              </div>
+              ${heatNum ? `<div class="rank-heat">${heatNum}</div>` : ""}
+            </div>`;
+          } else if (hyroxAny) {
+            const timeLine =
+              hyroxGlobal != null ? HyroxStore.formatHyroxRaceDuration(hyroxGlobal) : "—";
+            const clubHint =
+              scoredEvents.length > 0
+                ? `<div class="rank-hyrox-hint">Les <strong>${scoredCount} / ${scoredEvents.length}</strong> ci-après comptent uniquement les <strong>épreuves club</strong> saisies (distinctes du chronomètre officiel du parcours).</div>`
+                : "";
+            rankHtml = `<div class="rank-podium rank-podium-hyrox">
+              <div class="rank-medal">🏁</div>
+              <div class="rank-info">
+                <div class="rank-label">${HyroxStore.formatTeamDivisionLine(team)}</div>
+                <div class="rank-num rank-num-hyrox">${hyroxGlobal != null ? timeLine : "Parcours"}</div>
+                ${clubHint}
+              </div>
+              ${heatNum ? `<div class="rank-heat">${heatNum}</div>` : ""}
+            </div>`;
           } else {
             rankHtml = `<div class="rank-podium">
               <div class="rank-medal">⏳</div>
               <div class="rank-info">
                 <div class="rank-label">${HyroxStore.formatTeamDivisionLine(team)}</div>
                 <div class="rank-num rN">—</div>
-                <div class="rank-total">Pas encore de score</div>
+                <div class="rank-total">Pas encore de score ni de passage Hyrox</div>
               </div>
               ${heatNum ? `<div class="rank-heat">${heatNum}</div>` : ""}
             </div>`;
@@ -545,7 +952,7 @@
             if (!sc) {
               return `<div class="zone-row">
                 <span class="zone-icon">${meta.icon}</span>
-                <span class="zone-name">${ev.name}</span>
+                <span class="zone-name">${escHtml(ev.name)}</span>
                 <span class="zone-no-score">Pas de score</span>
               </div>`;
             }
@@ -562,7 +969,7 @@
             return `<div class="zone-row" style="border-left:3px solid ${meta.color}40">
               <span class="zone-icon">${meta.icon}</span>
               <div style="flex:1">
-                <div class="zone-name">${ev.name}</div>
+                <div class="zone-name">${escHtml(ev.name)}</div>
                 ${subLine}
               </div>
               <span class="zone-score-val ${fmt?.isDNF?"dnf":""}">${fmt?.text||"—"}</span>
@@ -573,22 +980,35 @@
           // Barre de complétion
           const dots = scoredEvents.map(ev => {
             const sc = (state.scores||[]).find(s=>s.teamId===entry.teamId && s.eventId===ev.id);
-            return `<span class="completion-dot ${sc&&!sc.dnf?"done":""}" title="${ev.name}"></span>`;
+            let dotCls = "";
+            if (sc?.dnf) dotCls = "dnf";
+            else if (sc && !sc.dnf) dotCls = "done";
+            const title = escHtml(ev.name) + (sc?.dnf ? " — DNF" : "");
+            return `<span class="completion-dot ${dotCls}" title="${title}"></span>`;
           }).join("");
+
+          const hyroxHtml = buildHyroxSectionHtml(state, entry.teamId, team);
+
+          const progressNote =
+            hyroxAny && scoredEvents.length > 0
+              ? `<div class="club-progress-note">Le chrono <strong>gun</strong> du parcours Hyrox est dans l’encadré jaune ci-dessus ; les pastilles comptent les scores <strong>club</strong> (zones), pas le parcours officiel.</div>`
+              : "";
 
           section.innerHTML = `
             <div class="comp-head">
-              <span class="badge badge-comp">${entry.compId}</span>
-              <span class="comp-name">${entry.compName}</span>
+              <span class="badge badge-comp">${escHtml(entry.compId)}</span>
+              <span class="comp-name">${escHtml(entry.compName)}</span>
               ${entry.compDate ? `<span class="comp-date">${fmtDate(entry.compDate)}</span>` : ""}
             </div>
             ${rankHtml}
             <div class="zone-scores">${zonesHtml}</div>
+            ${progressNote}
             <div class="completion-bar">
-              <span>Progression :</span>
+              <span>Épreuves club (points / rang) :</span>
               <span class="completion-dots">${dots}</span>
               <span>${scoredCount} / ${scoredEvents.length} épreuve${scoredEvents.length>1?"s":""}</span>
-            </div>`;
+            </div>
+            ${hyroxHtml}`;
 
           cardEl.appendChild(section);
         });
